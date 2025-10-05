@@ -1,7 +1,0 @@
-npm create vite@latest frontend
-cd frontend
-npm install
-npm i tailwindcss@3 postcss autoprefixer
-npx tailwindcss init -p
-
-
