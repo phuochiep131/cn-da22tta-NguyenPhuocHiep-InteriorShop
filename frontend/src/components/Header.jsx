@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Menu, X, ShoppingCart, User } from "lucide-react"
 import { Link } from "react-router-dom"
+import MainMenu from "./MainMenu"   // 👉 thêm import
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
@@ -32,15 +33,7 @@ export default function Header() {
           Nội Thất <span className="text-gray-600">Store</span>
         </div>
 
-        {/* Navigation - Desktop */}
-        <nav className="hidden md:flex space-x-6">
-          <Link to="/" className="text-gray-700 hover:text-black">Trang chủ</Link>
-          <a href="#" className="text-gray-700 hover:text-black">Sản phẩm</a>
-          <a href="#" className="text-gray-700 hover:text-black">Khuyến mãi</a>
-          <a href="#" className="text-gray-700 hover:text-black">Liên hệ</a>
-        </nav>
-
-        {/* Cart + Login/Logout - Desktop */}
+        {/* Cart + Login/Logout */}
         <div className="hidden md:flex space-x-3 items-center relative">
           <button className="text-gray-800 p-2 rounded-md hover:bg-gray-900 hover:text-white transition">
             <ShoppingCart size={20} />
@@ -87,41 +80,8 @@ export default function Header() {
         </button>
       </div>
 
-      {/* Mobile Menu */}
-      {isOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200 px-4 py-3 space-y-3">
-          <Link to="/" className="block text-gray-700 hover:text-black">Trang chủ</Link>
-          <a href="#" className="block text-gray-700 hover:text-black">Sản phẩm</a>
-          <a href="#" className="block text-gray-700 hover:text-black">Khuyến mãi</a>
-          <a href="#" className="block text-gray-700 hover:text-black">Liên hệ</a>
-
-          <div className="flex flex-col gap-2">
-            <button className="w-full border border-gray-800 text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition">
-              Giỏ hàng
-            </button>
-            {!isLoggedIn ? (
-              <Link
-                to="/login"
-                className="w-full text-center border border-gray-800 text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition"
-              >
-                Đăng nhập
-              </Link>
-            ) : (
-              <>
-                <a href="#" className="w-full text-left border border-gray-800 text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition">Thông tin cá nhân</a>
-                <a href="#" className="w-full text-left border border-gray-800 text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition">Đơn hàng</a>
-                <a href="#" className="w-full text-left border border-gray-800 text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition">Cài đặt</a>
-                <button
-                  onClick={handleLogout}
-                  className="w-full border border-gray-800 text-red-600 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition"
-                >
-                  Đăng xuất
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {/* 👉 Menu điều hướng nằm ngay dưới header */}
+      <MainMenu />
     </header>
   )
 }
