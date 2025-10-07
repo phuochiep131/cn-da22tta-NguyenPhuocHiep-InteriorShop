@@ -1,29 +1,28 @@
-import { useState, useEffect, useRef } from "react"
-import { Menu, X, ShoppingCart, User } from "lucide-react"
-import { Link } from "react-router-dom"
-import MainMenu from "./MainMenu"   // 👉 thêm import
+import { useState, useEffect, useRef, useContext } from "react";
+import { Menu, X, ShoppingCart, User } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
+import MainMenu from "./MainMenu";
 
 export default function Header() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef(null);
 
-  const menuRef = useRef(null)
+  // ✅ Lấy dữ liệu user & logout từ context
+  const { user, logout } = useContext(AuthContext);
+  const isLoggedIn = !!user;
 
-  const handleLogout = () => {
-    setIsLoggedIn(false)
-    setShowUserMenu(false)
-  }
-
+  // ✅ Đóng menu user khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowUserMenu(false)
+        setShowUserMenu(false);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -44,7 +43,7 @@ export default function Header() {
               to="/login"
               className="text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition flex items-center"
             >
-              <User size={20}/> Đăng nhập
+              <User size={20} /> Đăng nhập
             </Link>
           ) : (
             <div className="relative" ref={menuRef}>
@@ -52,15 +51,14 @@ export default function Header() {
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center gap-2 text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition"
               >
-                <User size={20}/> 
+                <User size={20} />{" "}
+                <span>{user.fullname || user.email}</span>
               </button>
+
               {showUserMenu && (
                 <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                  <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Thông tin cá nhân</a>
-                  <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Đơn hàng</a>
-                  <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Cài đặt</a>
                   <button
-                    onClick={handleLogout}
+                    onClick={logout}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                   >
                     Đăng xuất
@@ -80,8 +78,8 @@ export default function Header() {
         </button>
       </div>
 
-      {/* 👉 Menu điều hướng nằm ngay dưới header */}
+      {/* Menu điều hướng */}
       <MainMenu />
     </header>
-  )
+  );
 }
