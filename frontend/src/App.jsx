@@ -4,6 +4,7 @@ import Footer from "./components/Footer"
 import Home from "./pages/user/Home"
 import Login from "./pages/user/Login"
 import Register from "./pages/user/Register"
+import EditProfile from "./pages/user/EditProfile"
 import ScrollToTop from "./components/ScrollToTop"
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/edit-profile" element={<EditProfile />} />
           </Routes>
         </main>
 
