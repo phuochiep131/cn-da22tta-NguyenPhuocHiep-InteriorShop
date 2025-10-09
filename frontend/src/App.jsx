@@ -1,30 +1,39 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
-import Header from "./components/Header"
-import Footer from "./components/Footer"
-import Home from "./pages/user/Home"
-import Login from "./pages/user/Login"
-import Register from "./pages/user/Register"
-import EditProfile from "./pages/user/EditProfile"
-import ScrollToTop from "./components/ScrollToTop"
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import ScrollToTop from "./components/ScrollToTop";
+
+import MainLayout from "./layouts/MainLayout";
+import AdminLayout from "./layouts/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+
+import Home from "./pages/user/Home";
+import Login from "./pages/user/Login";
+import Register from "./pages/user/Register";
+import EditProfile from "./pages/user/profile/EditProfile";
+
 
 export default function App() {
   return (
     <Router>
       <ScrollToTop />
-      <div className="flex flex-col min-h-screen">
-        <Header />
+      <Routes>
+        {/* Layout người dùng (có Header + Footer) */}
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/edit-profile" element={<EditProfile />} />
+        </Route>
 
-        <main className="flex-grow py-4">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/edit-profile" element={<EditProfile />} />
-          </Routes>
-        </main>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="users" element={<div>Quản lý sản phẩm</div>} />
+          <Route path="products" element={<div>Quản lý sản phẩm</div>} />
+          <Route path="orders" element={<div>Quản lý đơn hàng</div>} />
+          <Route path="statistics" element={<div>Trang thống kê</div>} />
+        </Route>
 
-        <Footer />
-      </div>
+        
+      </Routes>
     </Router>
-  )
+  );
 }

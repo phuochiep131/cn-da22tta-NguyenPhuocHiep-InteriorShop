@@ -9,7 +9,7 @@ import java.sql.Timestamp;
 public class User {
 
     @Id
-    @Column(name = "user_id", length = 20)
+    @Column(name = "user_id", length = 50)
     private String userId;
 
     @Column(name = "email", nullable = false, unique = true, length = 100)

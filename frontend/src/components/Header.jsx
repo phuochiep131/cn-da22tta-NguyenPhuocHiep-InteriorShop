@@ -71,9 +71,16 @@ export default function Header() {
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center gap-2 text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition"
               >
-                <User size={20} />
+                <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-100">
+                  {user.avatar ? (
+                    <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={20} className="text-gray-500" />
+                  )}
+                </div>
                 <span>{user.fullName || user.email}</span>
               </button>
+                      
 
               {showUserMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
@@ -84,6 +91,18 @@ export default function Header() {
                       {user.role || "USER"}
                     </div>
                   </div>
+
+                  {user.role === "ADMIN" && (
+                    <button
+                      onClick={() => {
+                        navigate("/admin");
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <Shield size={16} /> Admin Dashboard
+                    </button>
+                  )}
 
                   <button
                     onClick={handleProfile}

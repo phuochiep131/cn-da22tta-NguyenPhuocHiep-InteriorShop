@@ -49,7 +49,7 @@ public class UserServiceImpl implements UserService {
         return userRepository.findById(id).map(u -> {
             u.setFullName(userDetails.getFullName());
             u.setAvatar(userDetails.getAvatar());
-            u.setEmail(userDetails.getEmail());
+            // u.setEmail(userDetails.getEmail());
             u.setAddress(userDetails.getAddress());
             u.setGender(userDetails.getGender());
             u.setBirthDate(userDetails.getBirthDate());

@@ -1,21 +1,30 @@
-import { useState, useContext } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useContext, useEffect } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { message } from "antd";
 import Cookies from "js-cookie";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function Login() {
-  const [email, setEmail] = useState(localStorage.getItem("rememberEmail") || "");
-  const [password, setPassword] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, login } = useContext(AuthContext);
+
+  // 🧠 Nếu người dùng được chuyển từ trang Register, lấy sẵn email và password
+  const initialEmail = location.state?.email || localStorage.getItem("rememberEmail") || "";
+  const initialPassword = location.state?.password || "";
+
+  const [email, setEmail] = useState(initialEmail);
+  const [password, setPassword] = useState(initialPassword);
   const [remember, setRemember] = useState(!!localStorage.getItem("rememberEmail"));
   const [loading, setLoading] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // 👈 trạng thái ẩn/hiện mật khẩu
-
-  const navigate = useNavigate();
-  const { user, login } = useContext(AuthContext);
+  const [showPassword, setShowPassword] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+
+  useEffect(() => {
+    
+  }, [location.state, messageApi]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -34,9 +43,11 @@ export default function Login() {
       const token = data.token;
       if (!token) throw new Error("Phản hồi không hợp lệ từ máy chủ");
 
+      // ✅ Lưu email nếu chọn "Ghi nhớ"
       if (remember) localStorage.setItem("rememberEmail", email);
       else localStorage.removeItem("rememberEmail");
 
+      // ✅ Lưu JWT vào cookie
       Cookies.set("jwt", token, {
         expires: 1 / 24, // 1 giờ
         secure: false,
@@ -82,7 +93,7 @@ export default function Login() {
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700">Mật khẩu</label>
                   <input
-                    type={showPassword ? "text" : "password"} // 👈 thay đổi kiểu input
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full mt-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-black focus:outline-none pr-10"
@@ -90,7 +101,7 @@ export default function Login() {
                     required
                     disabled={loading}
                   />
-                  {/* 👇 Biểu tượng con mắt bên phải */}
+                  {/* Biểu tượng con mắt */}
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
@@ -101,7 +112,7 @@ export default function Login() {
                   </button>
                 </div>
 
-                {/* Ghi nhớ */}
+                {/* Ghi nhớ đăng nhập */}
                 <div className="flex items-center">
                   <input
                     type="checkbox"
