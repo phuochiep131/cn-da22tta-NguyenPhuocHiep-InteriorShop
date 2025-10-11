@@ -8,6 +8,7 @@ import {
   DollarOutlined,
   BarChartOutlined,
   LogoutOutlined,
+  ArrowLeftOutlined,
 } from "@ant-design/icons";
 import { AuthContext } from "../context/AuthContext";
 
@@ -18,6 +19,9 @@ export default function AdminLayout() {
 
   const handleMenuClick = ({ key }) => {
     switch (key) {
+      case "home":
+        navigate("/");
+        break;
       case "dashboard":
         navigate("/admin");
         break;
@@ -43,6 +47,7 @@ export default function AdminLayout() {
   };
 
   const menuItems = [
+    { key: "home", icon: <ArrowLeftOutlined />, label: "Trang chủ" }, // 🔹 Mới thêm
     { key: "dashboard", icon: <HomeOutlined />, label: "Dashboard" },
     { key: "users", icon: <UserOutlined />, label: "Người dùng" },
     { key: "products", icon: <ShoppingOutlined />, label: "Sản phẩm" },
@@ -52,9 +57,9 @@ export default function AdminLayout() {
   ];
 
   return (
-    <div className="flex min-h-screen w-screen overflow-hidden bg-gray-100">
+    <div className="flex min-h-screen w-screen bg-gray-100">
       {/* Sidebar */}
-      <div className="w-60 bg-gray-900 text-white flex flex-col flex-shrink-0">
+      <div className="w-52 bg-gray-900 text-white flex flex-col flex-shrink-0">
         <div className="py-12 text-center text-xl font-bold border-b border-gray-700">
           🛠️ Admin
         </div>
@@ -93,8 +98,8 @@ export default function AdminLayout() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto w-full">
-          <div className="w-full">
+        <main className="flex-1 overflow-auto w-full">
+          <div className="w-full h-full">
             <Outlet />
           </div>
         </main>

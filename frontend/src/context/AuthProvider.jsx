@@ -6,7 +6,7 @@ const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   const login = async (userData, token) => {
-    Cookies.set("jwt", token, { expires: 1 / 48, sameSite: "Lax" });
+    Cookies.set("jwt", token, { expires: 1 / 24, sameSite: "Lax" });
 
     try {
       const res = await fetch("http://localhost:8080/api/users/profile", {

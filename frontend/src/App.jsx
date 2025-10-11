@@ -4,6 +4,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import UserManager from "./pages/admin/UserManager";
 
 import Home from "./pages/user/Home";
 import Login from "./pages/user/Login";
@@ -26,7 +27,7 @@ export default function App() {
 
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
-          <Route path="users" element={<div>Quản lý sản phẩm</div>} />
+          <Route path="users" element={<UserManager />} />
           <Route path="products" element={<div>Quản lý sản phẩm</div>} />
           <Route path="orders" element={<div>Quản lý đơn hàng</div>} />
           <Route path="statistics" element={<div>Trang thống kê</div>} />
