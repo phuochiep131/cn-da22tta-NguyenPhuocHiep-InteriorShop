@@ -31,20 +31,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User createUser(User user) {
-        // Mã hóa mật khẩu trước khi lưu
-        String encodedPassword = passwordEncoder.encode(user.getPassword());
-        user.setPassword(encodedPassword);
-
-        // Nếu role chưa được set, mặc định là USER
-        if (user.getRole() == null || user.getRole().isEmpty()) {
-            user.setRole("USER");
-        }
-
-        return userRepository.save(user);
-    }
-
-    @Override
     public User updateUser(String id, User userDetails) {
         return userRepository.findById(id).map(u -> {
             u.setFullName(userDetails.getFullName());
