@@ -28,6 +28,9 @@ export default function AdminLayout() {
       case "users":
         navigate("/admin/users");
         break;
+      case "categories":
+        navigate("/admin/categories");
+        break;
       case "products":
         navigate("/admin/products");
         break;
@@ -50,6 +53,7 @@ export default function AdminLayout() {
     { key: "home", icon: <ArrowLeftOutlined />, label: "Trang chủ" }, // 🔹 Mới thêm
     { key: "dashboard", icon: <HomeOutlined />, label: "Dashboard" },
     { key: "users", icon: <UserOutlined />, label: "Người dùng" },
+    { key: "categories", icon: <ShoppingOutlined />, label: "Danh mục" },
     { key: "products", icon: <ShoppingOutlined />, label: "Sản phẩm" },
     { key: "orders", icon: <DollarOutlined />, label: "Đơn hàng" },
     { key: "stats", icon: <BarChartOutlined />, label: "Thống kê" },

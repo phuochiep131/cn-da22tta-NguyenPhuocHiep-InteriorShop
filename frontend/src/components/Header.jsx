@@ -1,5 +1,13 @@
 import { useState, useEffect, useRef, useContext } from "react";
-import { Menu, X, ShoppingCart, User, Lock, LogOut, Shield } from "lucide-react";
+import {
+  Menu,
+  X,
+  ShoppingCart,
+  User,
+  Lock,
+  LogOut,
+  Shield,
+} from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import MainMenu from "./MainMenu";
@@ -8,14 +16,19 @@ import { message } from "antd";
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
   const menuRef = useRef(null);
   const navigate = useNavigate();
-  const [messageApi, contextHolder] = message.useMessage(); // ✅ thêm dòng này
+  const [messageApi, contextHolder] = message.useMessage();
 
   const { user, logout } = useContext(AuthContext);
   const isLoggedIn = !!user;
 
-  // Ẩn menu khi click ra ngoài
+  useEffect(() => {
+    const count = localStorage.getItem("cartCount") || 0;
+    setCartCount(Number(count));
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -38,33 +51,49 @@ export default function Header() {
 
   const handleLogout = () => {
     logout();
-    messageApi.success("Đăng xuất thành công!"); // ✅ dùng messageApi thay vì message
+    messageApi.success("Đăng xuất thành công!");
     setShowUserMenu(false);
     navigate("/");
   };
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      {contextHolder} {/* ✅ Thêm context holder */}
+      {contextHolder}
       <div className="px-4 py-3 flex items-center justify-between">
         {/* Logo */}
-        <div className="text-xl md:text-2xl font-bold text-gray-900">
-          Nội Thất <span className="text-gray-600">Store</span>
+        <div className="text-xl md:text-2xl font-bold text-gray-900 pl-[10%]">
+          Logo
         </div>
 
         {/* Cart + User */}
         <div className="hidden md:flex space-x-3 items-center relative">
-          <button className="text-gray-800 p-2 rounded-md hover:bg-gray-900 hover:text-white transition">
-            <ShoppingCart size={20} />
-          </button>
+          {/* 🛒 Giỏ hàng có badge */}
+          <div className="relative">
+            <button className="text-gray-800 p-2 rounded-md hover:bg-gray-900 hover:text-white transition relative">
+              <ShoppingCart size={22} />
+              {/* 🔵 Badge hiển thị số lượng */}
+              <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-semibold rounded-full px-[6px] py-[1px]">
+                {cartCount}
+              </span>
+            </button>
+          </div>
 
+          {/* 👤 User / Đăng nhập / Đăng ký */}
           {!isLoggedIn ? (
-            <Link
-              to="/login"
-              className="text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition flex items-center"
-            >
-              <User size={20} /> Đăng nhập
-            </Link>
+            <div className="flex space-x-2">
+              <Link
+                to="/register"
+                className="text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition flex items-center gap-1"
+              >
+                <User size={18} /> Đăng ký
+              </Link>
+              <Link
+                to="/login"
+                className="text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-blue-600 hover:text-white transition flex items-center gap-1 border border-blue-600"
+              >
+                <User size={18} /> Đăng nhập
+              </Link>
+            </div>
           ) : (
             <div className="relative" ref={menuRef}>
               <button
@@ -73,19 +102,24 @@ export default function Header() {
               >
                 <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-100">
                   {user.avatar ? (
-                    <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
+                    <img
+                      src={user.avatar}
+                      alt="avatar"
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <User size={20} className="text-gray-500" />
                   )}
                 </div>
                 <span>{user.fullName || user.email}</span>
               </button>
-                      
 
               {showUserMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
                   <div className="px-4 py-2 border-b text-sm text-gray-700">
-                    <div className="font-medium">{user.fullName || user.email}</div>
+                    <div className="font-medium">
+                      {user.fullName || user.email}
+                    </div>
                     <div className="flex items-center text-xs text-gray-500 mt-1">
                       <Shield size={14} className="mr-1" />
                       {user.role || "USER"}
