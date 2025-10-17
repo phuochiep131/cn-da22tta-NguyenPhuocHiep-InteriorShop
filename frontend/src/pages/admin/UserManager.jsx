@@ -273,59 +273,71 @@ export default function UserManager() {
         onCancel={() => setIsModalOpen(false)}
         okText="Lưu"
         cancelText="Hủy"
+        width={900} // rộng hơn để hiển thị 4 cột đẹp hơn
       >
         <Form form={form} layout="vertical">
-          <Form.Item
-            name="fullName"
-            label="Họ và tên"
-            rules={[{ required: true }]}
+          <div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+            style={{ marginTop: "10px" }}
           >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[{ required: true }]}
-          >
-            <Input disabled={!!editingUser} />
-          </Form.Item>
-          {!editingUser && (
             <Form.Item
-              name="password"
-              label="Mật khẩu"
-              rules={[{ required: true }]}
+              name="fullName"
+              label="Họ và tên"
+              rules={[{ required: true, message: "Vui lòng nhập họ và tên" }]}
             >
-              <Input.Password />
+              <Input />
             </Form.Item>
-          )}
-          <Form.Item name="phoneNumber" label="Số điện thoại">
-            <Input />
-          </Form.Item>
-          <Form.Item name="address" label="Địa chỉ">
-            <Input />
-          </Form.Item>
-          <Form.Item name="gender" label="Giới tính">
-            <Select>
-              <Select.Option value="Nam">Nam</Select.Option>
-              <Select.Option value="Nữ">Nữ</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="birthDate"
-            label="Ngày sinh"
-            rules={[{ required: false }]}
-          >
-            <DatePicker style={{ width: "100%" }} format="YYYY-MM-DD" />
-          </Form.Item>
-          <Form.Item name="role" label="Vai trò">
-            <Select>
-              <Select.Option value="USER">USER</Select.Option>
-              <Select.Option value="ADMIN">ADMIN</Select.Option>
-            </Select>
-          </Form.Item>
+
+            <Form.Item
+              name="email"
+              label="Email"
+              rules={[{ required: true, message: "Vui lòng nhập email" }]}
+            >
+              <Input disabled={!!editingUser} />
+            </Form.Item>
+
+            {!editingUser && (
+              <Form.Item
+                name="password"
+                label="Mật khẩu"
+                rules={[{ required: true, message: "Vui lòng nhập mật khẩu" }]}
+              >
+                <Input.Password />
+              </Form.Item>
+            )}
+
+            <Form.Item name="phoneNumber" label="Số điện thoại">
+              <Input />
+            </Form.Item>
+
+            <Form.Item name="address" label="Địa chỉ">
+              <Input />
+            </Form.Item>
+
+            <Form.Item name="gender" label="Giới tính">
+              <Select>
+                <Select.Option value="Nam">Nam</Select.Option>
+                <Select.Option value="Nữ">Nữ</Select.Option>
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              name="birthDate"
+              label="Ngày sinh"
+            >
+              <DatePicker style={{ width: "100%" }} format="YYYY-MM-DD" />
+            </Form.Item>
+
+            <Form.Item name="role" label="Vai trò">
+              <Select>
+                <Select.Option value="USER">USER</Select.Option>
+                <Select.Option value="ADMIN">ADMIN</Select.Option>
+              </Select>
+            </Form.Item>
+          </div>
         </Form>
       </Modal>
-
+      
       {/* Modal xóa nhiều */}
       <Modal
         title={`Xác nhận xóa ${selectedRowKeys.length} người dùng`}
