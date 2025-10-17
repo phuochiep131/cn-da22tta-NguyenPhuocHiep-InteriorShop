@@ -18,13 +18,24 @@ public class ProductController {
         this.productService = productService;
     }
 
-    // GET ALL
+    // // GET ALL
+    // @GetMapping
+    // public ResponseEntity<List<Product>> getAllProducts() {
+    //     return ResponseEntity.ok(productService.getAllProducts());
+    // }
+
     @GetMapping
-    public ResponseEntity<List<Product>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
+    public ResponseEntity<List<Product>> getAllProducts(
+            @RequestParam(required = false) String categoryId) {
+        List<Product> products;
+        if (categoryId != null && !categoryId.isEmpty()) {
+            products = productService.getProductsByCategoryId(categoryId);
+        } else {
+            products = productService.getAllProducts();
+        }
+        return ResponseEntity.ok(products);
     }
 
-    // GET BY ID
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductById(@PathVariable String id) {
         return productService.getProductById(id)

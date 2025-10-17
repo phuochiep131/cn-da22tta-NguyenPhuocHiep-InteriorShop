@@ -57,7 +57,7 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-white border-b border-gray-200 fixed top-0 w-full z-50">
       {contextHolder}
       <div className="px-4 py-3 flex items-center justify-between">
         {/* Logo */}

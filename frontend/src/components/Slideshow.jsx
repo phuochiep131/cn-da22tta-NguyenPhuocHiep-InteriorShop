@@ -6,7 +6,7 @@ import "swiper/css/pagination"
 
 export default function Slideshow() {
   return (
-    <div className="w-full max-w-7xl mx-auto mt-4 rounded-lg overflow-hidden shadow-md">
+    <div className="w-full max-w-7xl mx-auto rounded-lg overflow-hidden shadow-md">
       <Swiper
         modules={[Navigation, Pagination, Autoplay]}
         spaceBetween={30}
