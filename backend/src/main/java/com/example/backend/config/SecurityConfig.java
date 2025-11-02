@@ -42,17 +42,26 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/payment-methods/**").permitAll()
+
 
                 .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyRole("USER", "ADMIN")
 
+
                 .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
+
                 .requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
+
                 .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+
+                .requestMatchers(HttpMethod.POST, "/api/payment-methods/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/payment-methods/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/payment-methods/**").hasRole("ADMIN")
 
                 .requestMatchers("/api/users/profile").authenticated()
 
