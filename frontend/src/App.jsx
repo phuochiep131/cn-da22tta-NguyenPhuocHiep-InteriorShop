@@ -7,6 +7,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import UserManager from "./pages/admin/UserManager";
 import CategoryManager from "./pages/admin/CategoryManager";
 import ProductManager from "./pages/admin/ProductManager";
+import PaymentMethodManager from "./pages/admin/PaymentMethodManager";
 
 import Home from "./pages/user/Home";
 import Login from "./pages/user/Login";
@@ -20,13 +21,11 @@ export default function App() {
     <Router>
       <ScrollToTop />
       <Routes>
-        {/* Layout người dùng (có Header + Footer) */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/edit-profile" element={<EditProfile />} />
-
           <Route path="/products" element={<Products />} />
         </Route>
 
@@ -35,6 +34,7 @@ export default function App() {
           <Route path="users" element={<UserManager />} />
           <Route path="categories" element={<CategoryManager />} />
           <Route path="products" element={<ProductManager />} />
+          <Route path="payment-methods" element={<PaymentMethodManager />} />
           <Route path="orders" element={<div>Quản lý đơn hàng</div>} />
           <Route path="statistics" element={<div>Trang thống kê</div>} />
         </Route>

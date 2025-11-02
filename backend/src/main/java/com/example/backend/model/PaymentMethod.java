@@ -13,7 +13,6 @@ public class PaymentMethod {
     @Column(name = "payment_method_name", nullable = false)
     private String name;
 
-    // Constructors
     public PaymentMethod() {}
 
     public PaymentMethod(String id, String name) {

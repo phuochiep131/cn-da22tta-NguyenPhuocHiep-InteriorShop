@@ -34,6 +34,9 @@ export default function AdminLayout() {
       case "products":
         navigate("/admin/products");
         break;
+      case "payment-methods":
+        navigate("/admin/payment-methods");
+        break;
       case "orders":
         navigate("/admin/orders");
         break;
@@ -50,11 +53,12 @@ export default function AdminLayout() {
   };
 
   const menuItems = [
-    { key: "home", icon: <ArrowLeftOutlined />, label: "Trang chủ" }, // 🔹 Mới thêm
+    { key: "home", icon: <ArrowLeftOutlined />, label: "Trang chủ" },
     { key: "dashboard", icon: <HomeOutlined />, label: "Dashboard" },
     { key: "users", icon: <UserOutlined />, label: "Người dùng" },
     { key: "categories", icon: <ShoppingOutlined />, label: "Danh mục" },
     { key: "products", icon: <ShoppingOutlined />, label: "Sản phẩm" },
+    { key: "payment-methods", icon: <ShoppingOutlined />, label: "Phương thức thanh toán" },
     { key: "orders", icon: <DollarOutlined />, label: "Đơn hàng" },
     { key: "stats", icon: <BarChartOutlined />, label: "Thống kê" },
     { key: "logout", icon: <LogoutOutlined />, label: "Đăng xuất" },
