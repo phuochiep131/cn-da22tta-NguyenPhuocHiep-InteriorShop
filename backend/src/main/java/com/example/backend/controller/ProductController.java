@@ -43,22 +43,24 @@ public class ProductController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // CREATE
     @PostMapping
     public ResponseEntity<Product> createProduct(@RequestBody Product product) {
         return ResponseEntity.ok(productService.createProduct(product));
     }
 
-    // UPDATE
     @PutMapping("/{id}")
     public ResponseEntity<Product> updateProduct(@PathVariable String id, @RequestBody Product product) {
         return ResponseEntity.ok(productService.updateProduct(id, product));
     }
 
-    // DELETE
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable String id) {
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/related")
+    public List<Product> getRelatedProducts(@PathVariable("id") String id) {
+        return productService.getRelatedProducts(id);
     }
 }

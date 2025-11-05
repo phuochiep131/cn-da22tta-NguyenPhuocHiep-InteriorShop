@@ -60,4 +60,11 @@ public class ProductServiceImpl implements ProductService {
             return productRepository.findByCategoryId(categoryId);
         }
 
+    @Override
+    public List<Product> getRelatedProducts(String productId) {
+        Product current = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        return productRepository.findRelatedProducts(current.getCategoryId(), productId);
+    }
 }

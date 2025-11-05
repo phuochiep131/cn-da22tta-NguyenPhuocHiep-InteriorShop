@@ -6,10 +6,12 @@ import { message } from "antd";
 export default function ProductDetail() {
   const { productId } = useParams();
   const [product, setProduct] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
 
+  // ✅ Lấy chi tiết sản phẩm
   useEffect(() => {
     const fetchProduct = async () => {
       setLoading(true);
@@ -19,7 +21,7 @@ export default function ProductDetail() {
         const data = await res.json();
         setProduct(data);
       } catch (err) {
-        messageApi.error(err);
+        messageApi.error(err.message || "Lỗi tải sản phẩm");
       } finally {
         setLoading(false);
       }
@@ -28,16 +30,30 @@ export default function ProductDetail() {
     fetchProduct();
   }, [productId]);
 
+  // ✅ Lấy sản phẩm liên quan (gọi khi product đã có)
+  useEffect(() => {
+    if (!productId) return;
+    const fetchRelated = async () => {
+      try {
+        const res = await fetch(`http://localhost:8080/api/products/${productId}/related`);
+        if (!res.ok) throw new Error("Không thể tải sản phẩm liên quan");
+        const data = await res.json();
+        setRelatedProducts(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchRelated();
+  }, [productId]);
+
   const handleAddToCart = () => {
     if (!product) return;
     messageApi.success(`Đã thêm "${product.productName}" vào giỏ hàng!`);
-    // TODO: gọi hàm thêm giỏ hàng thực tế
   };
 
   const handleBuyNow = () => {
     if (!product) return;
     messageApi.info(`Mua ngay "${product.productName}"`);
-    // TODO: điều hướng tới checkout
   };
 
   if (loading) {
@@ -52,12 +68,12 @@ export default function ProductDetail() {
     return <p className="text-center text-gray-500">Không tìm thấy sản phẩm.</p>;
   }
 
-  // tính giá sau giảm (nếu có)
+  // ✅ Tính giá sau giảm (nếu có)
   const discount = product.discount || 0;
   const finalPrice = product.price ? product.price * (1 - discount / 100) : 0;
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="max-w-6xl mx-auto px-6 py-10">
       {contextHolder}
       <button
         onClick={() => navigate(-1)}
@@ -66,6 +82,7 @@ export default function ProductDetail() {
         <ArrowLeftOutlined className="mr-1" /> Quay lại
       </button>
 
+      {/* Chi tiết sản phẩm */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <img
           src={product.imageUrl || "https://via.placeholder.com/500x400?text=No+Image"}
@@ -124,6 +141,80 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
+
+      <hr className="border-t-4 border-blue-600 my-10" />
+
+      
+      {/* ✅ Hiển thị sản phẩm liên quan (dạng lưới giống trang danh mục) */}
+<div className="mt-10 px-2 sm:px-0 max-w-7xl mx-auto">
+  <h2 className="text-2xl font-bold mb-6 text-gray-800">Sản phẩm liên quan</h2>
+
+  {relatedProducts.length === 0 ? (
+    <p className="text-center text-gray-500 italic">Không có sản phẩm liên quan.</p>
+  ) : (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+      {relatedProducts.map((prod) => (
+        <div
+          key={prod.productId}
+          className="group bg-white rounded-xl shadow hover:shadow-lg overflow-hidden transition-all duration-300 flex flex-col justify-between"
+        >
+          <img
+            src={prod.imageUrl || "https://via.placeholder.com/300x200?text=No+Image"}
+            alt={prod.productName}
+            className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+
+          <div className="p-4 flex flex-col flex-grow">
+            <h3 className="text-lg font-semibold text-gray-800 truncate mb-1">
+              {prod.productName}
+            </h3>
+
+            {/* Hiển thị giá (nếu có giảm giá) */}
+            {prod.discount > 0 ? (
+              <>
+                <p className="text-gray-500 line-through text-sm">
+                  {prod.price?.toLocaleString("vi-VN")} ₫
+                </p>
+                <p className="text-red-600 font-bold mb-3">
+                  {(prod.price * (1 - prod.discount / 100))?.toLocaleString("vi-VN")} ₫
+                </p>
+              </>
+            ) : (
+              <p className="text-red-600 font-bold mb-3">
+                {prod.price?.toLocaleString("vi-VN")} ₫
+              </p>
+            )}
+
+            <div className="mt-auto flex gap-2">
+              <button
+                onClick={() => handleAddToCart(prod)}
+                className="flex-1 flex items-center justify-center gap-1 bg-gray-100 text-gray-800 px-2 py-1.5 rounded text-xs font-medium hover:bg-gray-200 transition"
+              >
+                <ShoppingCartOutlined className="text-[15px]" />
+                Thêm vào <br /> giỏ hàng
+              </button>
+
+              <button
+                onClick={() => handleBuyNow(prod)}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 rounded text-xs font-medium transition"
+              >
+                Mua ngay
+              </button>
+            </div>
+
+            <button
+              onClick={() => navigate(`/product/${prod.productId}`)}
+              className="mt-3 block text-center text-sm text-blue-600 hover:text-blue-800 transition"
+            >
+              Xem chi tiết
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
+
     </div>
   );
 }
