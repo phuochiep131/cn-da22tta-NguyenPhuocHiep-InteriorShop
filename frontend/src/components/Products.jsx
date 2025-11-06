@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ShoppingCartOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import { message } from "antd";
+import { Eye } from "lucide-react";
 
 export default function Products({ searchTerm = "", priceRange }) {
   const [products, setProducts] = useState([]);
@@ -43,15 +44,12 @@ export default function Products({ searchTerm = "", priceRange }) {
 
   const filteredProducts = products.filter((p) => {
     const matchesName = p.productName.toLowerCase().includes(searchTerm.toLowerCase());
-
     const price = parseFloat(p.price);
     const matchesPrice =
       (!priceRange?.min || price >= priceRange.min) &&
       (!priceRange?.max || price <= priceRange.max);
-
     return matchesName && matchesPrice;
   });
-
 
   useEffect(() => {
     if (loading) return;
@@ -64,9 +62,8 @@ export default function Products({ searchTerm = "", priceRange }) {
     }
   }, [searchTerm, filteredProducts.length, loading]);
 
-
-  const handleAddToCart = (product) => console.log("Thêm vào giỏ:", product.productName);
-  const handleBuyNow = (product) => console.log("Mua ngay:", product.productName);
+  const handleAddToCart = (product) =>
+    messageApi.success(`Đã thêm ${product.productName} vào giỏ hàng!`);
 
   if (loading) {
     return (
@@ -87,52 +84,71 @@ export default function Products({ searchTerm = "", priceRange }) {
         <p className="text-center text-gray-500">Không có sản phẩm nào.</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredProducts.map((prod) => (
-            <div
-              key={prod.productId}
-              className="group bg-white rounded-xl shadow hover:shadow-lg overflow-hidden transition-all duration-300 flex flex-col justify-between"
-            >
-              <img
-                src={prod.imageUrl || "https://via.placeholder.com/300x200?text=No+Image"}
-                alt={prod.productName}
-                className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-300"
-              />
+          {filteredProducts.map((prod) => {
+            const finalPrice = prod.discount > 0
+              ? prod.price * (1 - prod.discount / 100)
+              : prod.price;
 
-              <div className="p-4 flex flex-col flex-grow">
-                <h3 className="text-lg font-semibold text-gray-800 truncate mb-1">
-                  {prod.productName}
-                </h3>
-                <p className="text-red-600 font-bold mb-3">
-                  {prod.price?.toLocaleString("vi-VN")} ₫
-                </p>
+            return (
+              <div
+                key={prod.productId}
+                className="group bg-white rounded-xl shadow hover:shadow-lg overflow-hidden transition-all duration-300 flex flex-col"
+              >
+                <div className="relative">
+                  <img
+                    src={prod.imageUrl || "https://via.placeholder.com/300x200?text=No+Image"}
+                    alt={prod.productName}
+                    className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
 
-                <div className="mt-auto flex gap-2">
-                  <button
-                    onClick={() => handleAddToCart(prod)}
-                    className="flex-1 flex items-center justify-center gap-1 bg-gray-100 text-gray-800 px-2 py-1.5 rounded text-xs font-medium hover:bg-gray-200 transition"
-                  >
-                    <ShoppingCartOutlined className="text-[15px]" />
-
-                    Thêm vào <br /> giỏ hàng
-                  </button>
-
-                  <button
-                    onClick={() => handleBuyNow(prod)}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 rounded text-xs font-medium transition"
-                  >
-                    Mua ngay
-                  </button>
+                  {prod.discount > 0 && (
+                    <span className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-xl shadow">
+                      -{prod.discount}%
+                    </span>
+                  )}
                 </div>
 
-                <Link
-                  to={`/product/${prod.productId}`}
-                  className="mt-3 block text-center text-sm text-blue-600 hover:text-blue-800 transition"
-                >
-                  Xem chi tiết
-                </Link>
+                <div className="p-4 flex flex-col flex-grow">
+                  <h3 className="text-lg font-semibold text-gray-800 truncate mb-1">
+                    {prod.productName}
+                  </h3>
+
+                  {prod.discount > 0 ? (
+                    <>
+                      <p className="text-gray-500 line-through text-sm">
+                        {prod.price?.toLocaleString("vi-VN")} ₫
+                      </p>
+                      <p className="text-red-600 font-bold mb-3">
+                        {finalPrice?.toLocaleString("vi-VN")} ₫
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-red-600 font-bold mb-3">
+                      {prod.price?.toLocaleString("vi-VN")} ₫
+                    </p>
+                  )}
+
+                  <div className="mt-auto flex gap-2">
+                    <button
+                      onClick={() => handleAddToCart(prod)}
+                      className="flex-1 flex items-center justify-center gap-1 bg-gray-100 text-gray-800 px-2 py-1.5 rounded text-xs font-medium hover:bg-gray-200 transition"
+                    >
+                      <ShoppingCartOutlined className="text-[15px]" />
+                      Thêm vào <br /> giỏ hàng
+                    </button>
+
+                    <Link
+                      to={`/product/${prod.productId}`}
+                      className="flex-1 flex items-center justify-center gap-1 bg-blue-600 text-white px-2 py-1.5 rounded text-xs font-medium transition"
+                    >
+                      <Eye className="w-4 h-4 transition-all" />
+                      <span className="ml-1">Xem chi tiết</span>
+                    </Link>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

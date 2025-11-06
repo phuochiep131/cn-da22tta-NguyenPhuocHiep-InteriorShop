@@ -14,7 +14,7 @@ import Login from "./pages/user/Login";
 import Register from "./pages/user/Register";
 import EditProfile from "./pages/user/profile/EditProfile";
 import Products from "./components/Products";
-
+import ProductDetail from "./pages/user/ProductDetail";
 
 export default function App() {
   return (
@@ -27,6 +27,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/edit-profile" element={<EditProfile />} />
           <Route path="/products" element={<Products />} />
+          <Route path="/product/:productId" element={<ProductDetail />} />
         </Route>
 
         <Route path="/admin" element={<AdminLayout />}>
