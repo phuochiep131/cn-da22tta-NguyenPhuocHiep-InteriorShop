@@ -15,6 +15,7 @@ import Register from "./pages/user/Register";
 import EditProfile from "./pages/user/profile/EditProfile";
 import Products from "./components/Products";
 import ProductDetail from "./pages/user/ProductDetail";
+import Checkout from "./pages/user/Checkout";
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/edit-profile" element={<EditProfile />} />
           <Route path="/products" element={<Products />} />
           <Route path="/product/:productId" element={<ProductDetail />} />
+          <Route path="/checkout" element={<Checkout />} />
         </Route>
 
         <Route path="/admin" element={<AdminLayout />}>
