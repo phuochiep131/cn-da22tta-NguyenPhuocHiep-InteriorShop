@@ -80,7 +80,6 @@ export default function ProductManager() {
     }
   };
 
-  // ------------------ Upload Cloudinary ------------------
   const uploadToCloudinary = async (file) => {
     const data = new FormData();
     data.append("file", file);
@@ -96,7 +95,6 @@ export default function ProductManager() {
     return uploaded.secure_url;
   };
 
-  // ------------------ Handlers ------------------
   const handleAdd = () => {
     setEditingProduct(null);
     form.resetFields();
@@ -208,6 +206,7 @@ export default function ProductManager() {
     },
     { title: "Số lượng", dataIndex: "quantity" },
     { title: "Giảm giá (%)", dataIndex: "discount" },
+    { title: "Bảo hành", dataIndex: "warranty" },
     { title: "Màu sắc", dataIndex: "color" },
     {
       title: "Thao tác",
@@ -338,6 +337,12 @@ export default function ProductManager() {
 
             <Col xs={24} sm={12} md={6}>
               <Form.Item name="origin" label="Xuất xứ">
+                <Input />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item name="warranty" label="Bảo hành">
                 <Input />
               </Form.Item>
             </Col>

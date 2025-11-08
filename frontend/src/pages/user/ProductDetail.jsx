@@ -52,15 +52,19 @@ export default function ProductDetail() {
   };
 
   const handleBuyNow = () => {
-    messageApi.info(`Mua ngay ${quantity} sản phẩm`);
+    navigate("/checkout", {
+      state: {
+        product: product,
+        quantity: quantity
+      }
+    });
   };
 
+
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64 text-gray-600">
-        Đang tải thông tin sản phẩm...
-      </div>
-    );
+    return <div className="flex justify-center items-center h-64 text-gray-600">
+      Đang tải thông tin sản phẩm...
+    </div>;
   }
 
   if (!product) {
@@ -73,6 +77,7 @@ export default function ProductDetail() {
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
       {contextHolder}
+
       <button
         onClick={() => navigate(-1)}
         className="flex items-center text-gray-600 hover:text-blue-600 mb-6"
@@ -80,6 +85,7 @@ export default function ProductDetail() {
         <ArrowLeftOutlined className="mr-1" /> Quay lại
       </button>
 
+      {/* Sản phẩm chính */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <img
           src={product.imageUrl || "https://via.placeholder.com/500x400?text=No+Image"}
@@ -87,41 +93,36 @@ export default function ProductDetail() {
           className="w-full h-96 object-cover rounded-lg shadow"
         />
 
-        <div className="flex flex-col">
+        <div>
           <h1 className="text-3xl font-bold mb-2">{product.productName}</h1>
 
           <div className="mb-4">
             {discount > 0 ? (
               <>
-                <p className="text-gray-500 line-through">{product.price?.toLocaleString("vi-VN")} ₫</p>
-                <p className="text-red-600 text-2xl font-semibold">{finalPrice?.toLocaleString("vi-VN")} ₫ (giảm {discount}%)</p>
+                <p className="text-gray-500 line-through">
+                  {product.price?.toLocaleString("vi-VN")} ₫
+                </p>
+                <p className="text-red-600 text-2xl font-semibold">
+                  {finalPrice?.toLocaleString("vi-VN")} ₫ (giảm {discount}%)
+                </p>
               </>
             ) : (
-              <p className="text-red-600 text-2xl font-semibold">{product.price?.toLocaleString("vi-VN")} ₫</p>
+              <p className="text-red-600 text-2xl font-semibold">
+                {product.price?.toLocaleString("vi-VN")} ₫
+              </p>
             )}
           </div>
 
-          <p className="text-gray-700 mb-4">{product.description || "Không có mô tả."}</p>        
+          <p className="text-gray-700 mb-4">{product.description || "Không có mô tả."}</p>
 
+          {/* Số lượng */}
           <div className="flex items-center gap-3 mb-6">
-            <span className="text-gray-700 font-medium">Số lượng:</span>
-            <button
-              onClick={() => setQuantity(q => Math.max(1, q - 1))}
-              className="px-3 py-1 bg-gray-200 rounded"
-            >
-              -
-            </button>
+            <span className="font-medium">Số lượng:</span>
+            <button onClick={() => setQuantity(q => Math.max(1, q - 1))}
+              className="px-3 py-1 bg-gray-200 rounded">-</button>
             <span className="px-4 py-1 border rounded">{quantity}</span>
             <button
-              onClick={() =>
-                setQuantity(q => {
-                  if (q + 1 > product.quantity) {
-                    messageApi.warning("Số lượng vượt quá tồn kho!");
-                    return q;
-                  }
-                  return q + 1;
-                })
-              }
+              onClick={() => setQuantity(q => (q + 1 > product.quantity ? q : q + 1))}
               className="px-3 py-1 bg-gray-200 rounded"
             >
               +
@@ -146,46 +147,57 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      <div className="rounded-lg p-4 mb-6 text-base text-gray-900 space-y-2">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2 pb-1">
-          Mô tả sản phẩm
-        </h2>
-        <p><span className="font-semibold">Kích thước:</span> {product.size || "Không có thông tin"}</p>
-        <p><span className="font-semibold">Màu sắc:</span> {product.color || "Không có thông tin"}</p>
-        <p><span className="font-semibold">Chất liệu:</span> {product.material || "Không có thông tin"}</p>
-        <p><span className="font-semibold">Bảo hành:</span> {product.warranty || "Không có thông tin"}</p>
-        <p><span className="font-semibold">Xuất xứ:</span> {product.origin || "Không có thông tin"}</p>
+      {/* Mô tả */}
+      <div className="mt-10 space-y-2">
+        <h2 className="text-2xl font-semibold">Mô tả sản phẩm</h2>
+        <p><b>Kích thước:</b> {product.size || "Không có thông tin"}</p>
+        <p><b>Màu sắc:</b> {product.color || "Không có thông tin"}</p>
+        <p><b>Chất liệu:</b> {product.material || "Không có thông tin"}</p>
+        <p><b>Bảo hành:</b> {product.warranty || "Không có thông tin"}</p>
+        <p><b>Xuất xứ:</b> {product.origin || "Không có thông tin"}</p>
       </div>
 
       <hr className="border-t-4 border-blue-600 my-10" />
 
-      <div className="mt-10 max-w-7xl mx-auto">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">Sản phẩm liên quan</h2>
+      {/* Sản phẩm liên quan */}
+      <h2 className="text-2xl font-bold mb-6">Sản phẩm liên quan</h2>
 
-        {relatedProducts.length === 0 ? (
-          <p className="text-center text-gray-500 italic">Không có sản phẩm liên quan.</p>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-            {relatedProducts.map((prod) => (
-              <div key={prod.productId} className="group bg-white rounded-xl shadow hover:shadow-lg transition-all duration-300">
+      {relatedProducts.length === 0 ? (
+        <p className="text-center text-gray-500 italic">Không có sản phẩm liên quan.</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+          {relatedProducts.map((prod) => {
+            const final = prod.discount > 0 ? prod.price * (1 - prod.discount / 100) : prod.price;
+
+            return (
+              <div key={prod.productId} className="group bg-white rounded-xl shadow hover:shadow-lg transition-all duration-300 flex flex-col">
                 <img
-                  src={prod.imageUrl || "https://via.placeholder.com/300x200?text=No+Image"}
-                  alt={prod.productName}
+                  src={prod.imageUrl}
                   className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
 
-                <div className="p-4 flex flex-col">
-                  <h3 className="text-lg font-semibold text-gray-800 truncate mb-1">{prod.productName}</h3>
+                <div className="p-4 flex flex-col flex-grow">
+                  <h3 className="text-lg font-semibold truncate mb-1">{prod.productName}</h3>
 
-                  {prod.discount > 0 ? (
-                    <>
-                      <p className="text-gray-500 line-through text-sm">{prod.price?.toLocaleString("vi-VN")} ₫</p>
-                      <p className="text-red-600 font-bold mb-3">{(prod.price * (1 - prod.discount / 100))?.toLocaleString("vi-VN")} ₫</p>
-                    </>
-                  ) : (
-                    <p className="text-red-600 font-bold mb-3">{prod.price?.toLocaleString("vi-VN")} ₫</p>
-                  )}
+                  {/* GIỮ CHIỀU CAO ĐỒNG NHẤT CHO GIÁ */}
+                  <div className="min-h-[48px] flex flex-col justify-center mb-3">
+                    {prod.discount > 0 ? (
+                      <>
+                        <p className="text-gray-500 line-through text-sm">
+                          {prod.price.toLocaleString("vi-VN")} ₫
+                        </p>
+                        <p className="text-red-600 font-bold">
+                          {final.toLocaleString("vi-VN")} ₫
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-red-600 font-bold">
+                        {prod.price.toLocaleString("vi-VN")} ₫
+                      </p>
+                    )}
+                  </div>
 
+                  {/* Nút giữ ngang hàng */}
                   <div className="mt-auto flex gap-2">
                     <button
                       onClick={() => handleAddToCart(prod)}
@@ -197,18 +209,18 @@ export default function ProductDetail() {
 
                     <Link
                       to={`/product/${prod.productId}`}
-                      className="flex-1 flex items-center justify-center gap-1 bg-blue-600 text-white px-2 py-1.5 rounded text-xs font-medium transition"
+                      className="flex-1 flex items-center justify-center gap-1 bg-blue-600 text-white px-2 py-1.5 rounded text-xs font-medium hover:bg-blue-700 transition"
                     >
-                      <Eye className="w-4 h-4 transition-all" />
-                      <span className="ml-1">Xem chi tiết</span>
+                      <Eye className="w-4 h-4" />
+                      Xem chi tiết
                     </Link>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
