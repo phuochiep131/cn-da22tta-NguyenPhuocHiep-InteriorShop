@@ -49,6 +49,15 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    public Coupon updateStatus(Integer id, Boolean status) {
+        Coupon coupon = couponRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Coupon not found"));
+
+        coupon.setIsActive(status);
+        return couponRepository.save(coupon);
+    }
+
+    @Override
     public void deleteCoupon(Integer id) {
         couponRepository.deleteById(id);
     }

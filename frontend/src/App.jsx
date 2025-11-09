@@ -8,6 +8,7 @@ import UserManager from "./pages/admin/UserManager";
 import CategoryManager from "./pages/admin/CategoryManager";
 import ProductManager from "./pages/admin/ProductManager";
 import PaymentMethodManager from "./pages/admin/PaymentMethodManager";
+import CouponManager from "./pages/admin/CouponManager";
 
 import Home from "./pages/user/Home";
 import Login from "./pages/user/Login";
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="categories" element={<CategoryManager />} />
           <Route path="products" element={<ProductManager />} />
           <Route path="payment-methods" element={<PaymentMethodManager />} />
+          <Route path="coupons" element={<CouponManager />} />
           <Route path="orders" element={<div>Quản lý đơn hàng</div>} />
           <Route path="statistics" element={<div>Trang thống kê</div>} />
         </Route>

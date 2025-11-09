@@ -5,11 +5,12 @@ import com.example.backend.service.CouponService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import java.util.Map;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/coupons")
+@CrossOrigin(origins = "*")
 public class CouponController {
 
     @Autowired
@@ -35,6 +36,12 @@ public class CouponController {
     @PutMapping("/{id}")
     public Coupon updateCoupon(@PathVariable Integer id, @RequestBody Coupon coupon) {
         return couponService.updateCoupon(id, coupon);
+    }
+
+    @PutMapping("/{id}/status")
+    public Coupon updateStatus(@PathVariable Integer id, @RequestBody Map<String, Boolean> body) {
+        Boolean status = body.get("status");
+        return couponService.updateStatus(id, status);
     }
 
     @DeleteMapping("/{id}")
