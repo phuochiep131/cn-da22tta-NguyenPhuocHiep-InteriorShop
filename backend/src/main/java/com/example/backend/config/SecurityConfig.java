@@ -12,10 +12,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import java.util.List;
 
 @Configuration
 @EnableMethodSecurity
@@ -43,6 +39,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/payment-methods/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/coupons/**").permitAll()
 
 
                 .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyRole("USER", "ADMIN")
@@ -63,6 +60,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/payment-methods/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/payment-methods/**").hasRole("ADMIN")
 
+                .requestMatchers(HttpMethod.POST, "/api/coupons/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/coupons/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/coupons/**").hasRole("ADMIN")
+
                 .requestMatchers("/api/users/profile").authenticated()
 
                 .anyRequest().authenticated()
@@ -81,26 +82,4 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
-
-    // @Bean
-    // public CorsConfigurationSource corsConfigurationSource() {
-    //     CorsConfiguration config = new CorsConfiguration();
-
-    //     // ✅ Cho phép React app của bạn gọi API
-    //     config.setAllowedOrigins(List.of("http://localhost:5173"));
-    //     config.setAllowCredentials(true); // ✅ Cho phép gửi cookie JWT nếu có
-
-    //     // ✅ Các phương thức HTTP cho phép
-    //     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-
-    //     // ✅ Các header được phép
-    //     config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-
-    //     // ✅ Các header cho phép FE đọc lại
-    //     config.setExposedHeaders(List.of("Authorization"));
-
-    //     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    //     source.registerCorsConfiguration("/**", config);
-    //     return source;
-    // }
 }

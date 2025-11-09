@@ -7,7 +7,7 @@ import jakarta.persistence.*;
 public class PaymentMethod {
 
     @Id
-    @Column(name = "payment_method_id")
+    @Column(name = "payment_method_id", length = 50)
     private String id;
 
     @Column(name = "payment_method_name", nullable = false)
