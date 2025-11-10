@@ -37,6 +37,9 @@ export default function AdminLayout() {
       case "payment-methods":
         navigate("/admin/payment-methods");
         break;
+      case "coupons":
+        navigate("/admin/coupons");
+        break;
       case "orders":
         navigate("/admin/orders");
         break;
@@ -59,6 +62,7 @@ export default function AdminLayout() {
     { key: "categories", icon: <ShoppingOutlined />, label: "Danh mục" },
     { key: "products", icon: <ShoppingOutlined />, label: "Sản phẩm" },
     { key: "payment-methods", icon: <ShoppingOutlined />, label: "Phương thức thanh toán" },
+    { key: "coupons", icon: <DollarOutlined />, label: "Mã giảm giá" },
     { key: "orders", icon: <DollarOutlined />, label: "Đơn hàng" },
     { key: "stats", icon: <BarChartOutlined />, label: "Thống kê" },
     { key: "logout", icon: <LogoutOutlined />, label: "Đăng xuất" },
