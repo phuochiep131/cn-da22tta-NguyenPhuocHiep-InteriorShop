@@ -15,6 +15,13 @@ const AuthProvider = ({ children }) => {
       if (!res.ok) throw new Error("Không thể tải thông tin người dùng");
       const data = await res.json();
       setUser(data);
+
+      if (data.userId) {
+        Cookies.set("user_id", data.userId, {
+          expires: 1 / 24,
+          sameSite: "Lax",
+        });
+      }
     } catch (error) {
       console.error("❌ Lỗi khi tải profile:", error);
     }
@@ -28,6 +35,7 @@ const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = Cookies.get("jwt");
     if (!token) return;
+
     fetch("http://localhost:8080/api/users/profile", {
       headers: { Authorization: `Bearer ${token}` },
     })

@@ -5,6 +5,8 @@ import com.example.backend.repository.OrderDetailRepository;
 import com.example.backend.service.OrderDetailService;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,29 +25,37 @@ public class OrderDetailServiceImpl implements OrderDetailService {
     }
 
     @Override
-    public Optional<OrderDetail> getOrderDetailById(Integer id) {
+    public Optional<OrderDetail> getOrderDetailById(String id) {
         return orderDetailRepository.findById(id);
     }
 
     @Override
     public OrderDetail createOrderDetail(OrderDetail orderDetail) {
+        orderDetail.setOrderDetailId(generateOrderDetailId());
         return orderDetailRepository.save(orderDetail);
     }
 
-    @Override
-    public OrderDetail updateOrderDetail(Integer id, OrderDetail orderDetail) {
-        return orderDetailRepository.findById(id).map(existing -> {
-            existing.setOrderId(orderDetail.getOrderId());
-            existing.setProductId(orderDetail.getProductId());
-            existing.setQuantity(orderDetail.getQuantity());
-            existing.setUnitPrice(orderDetail.getUnitPrice());
-            existing.setOriginalUnitPrice(orderDetail.getOriginalUnitPrice());
-            return orderDetailRepository.save(existing);
-        }).orElseThrow(() -> new RuntimeException("OrderDetail not found with id " + id));
+    private String generateOrderDetailId() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+        return "DH" + LocalDateTime.now().format(formatter);
     }
 
     @Override
-    public void deleteOrderDetail(Integer id) {
+    public OrderDetail updateOrderDetail(String id, OrderDetail orderDetail) {
+        return orderDetailRepository.findById(id)
+                .map(existing -> {
+                    existing.setOrderId(orderDetail.getOrderId());
+                    existing.setProductId(orderDetail.getProductId());
+                    existing.setQuantity(orderDetail.getQuantity());
+                    existing.setUnitPrice(orderDetail.getUnitPrice());
+                    existing.setOriginalUnitPrice(orderDetail.getOriginalUnitPrice());
+                    return orderDetailRepository.save(existing);
+                })
+                .orElseThrow(() -> new RuntimeException("OrderDetail not found with id " + id));
+    }
+
+    @Override
+    public void deleteOrderDetail(String id) {
         orderDetailRepository.deleteById(id);
     }
 

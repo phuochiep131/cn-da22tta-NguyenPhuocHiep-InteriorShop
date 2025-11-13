@@ -8,9 +8,8 @@ import java.math.BigDecimal;
 public class OrderDetail {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "order_detail_id")
-    private Integer orderDetailId;
+    @Column(name = "order_detail_id", length = 50)
+    private String orderDetailId;
 
     @Column(name = "order_id", nullable = false, length = 50)
     private String orderId;
@@ -31,11 +30,11 @@ public class OrderDetail {
     private BigDecimal subtotal;
 
     // Getters và Setters
-    public Integer getOrderDetailId() {
+    public String getOrderDetailId() {
         return orderDetailId;
     }
 
-    public void setOrderDetailId(Integer orderDetailId) {
+    public void setOrderDetailId(String orderDetailId) {
         this.orderDetailId = orderDetailId;
     }
 

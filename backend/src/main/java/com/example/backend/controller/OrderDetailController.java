@@ -23,7 +23,7 @@ public class OrderDetailController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<OrderDetail> getById(@PathVariable Integer id) {
+    public ResponseEntity<OrderDetail> getById(@PathVariable String id) {
         return orderDetailService.getOrderDetailById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -35,7 +35,7 @@ public class OrderDetailController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<OrderDetail> update(@PathVariable Integer id, @RequestBody OrderDetail orderDetail) {
+    public ResponseEntity<OrderDetail> update(@PathVariable String id, @RequestBody OrderDetail orderDetail) {
         try {
             return ResponseEntity.ok(orderDetailService.updateOrderDetail(id, orderDetail));
         } catch (RuntimeException e) {
@@ -44,7 +44,7 @@ public class OrderDetailController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+    public ResponseEntity<Void> delete(@PathVariable String id) {
         orderDetailService.deleteOrderDetail(id);
         return ResponseEntity.noContent().build();
     }
