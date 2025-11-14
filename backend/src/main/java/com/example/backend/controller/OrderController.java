@@ -41,8 +41,14 @@ public class OrderController {
         return orderService.getAllOrders();
     }
 
+    @GetMapping("/user/{userId}")
+    public List<Order> getOrdersByUser(@PathVariable String userId) {
+        return orderService.getOrdersByUser(userId);
+    }
+
     @GetMapping("/{orderId}")
     public Order getOrderById(@PathVariable String orderId) {
         return orderService.getOrderById(orderId);
     }
+
 }

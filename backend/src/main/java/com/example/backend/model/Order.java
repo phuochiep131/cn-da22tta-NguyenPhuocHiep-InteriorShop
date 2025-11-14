@@ -24,6 +24,9 @@ public class Order {
     @Column(name = "customer_note")
     private String customerNote;
 
+    @Column(name = "order_status")
+    private String orderStatus;
+
     @Column(name = "coupon_id")
     private Integer couponId;
 
@@ -36,6 +39,14 @@ public class Order {
     // Getters & Setters
     public String getOrderId() { return orderId; }
     public void setOrderId(String orderId) { this.orderId = orderId; }
+
+    public String getOrderStatus() {
+        return orderStatus;
+    }
+
+    public void setOrderStatus(String orderStatus) {
+        this.orderStatus = orderStatus;
+    }
 
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }

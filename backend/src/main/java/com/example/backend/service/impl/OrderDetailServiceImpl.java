@@ -2,18 +2,24 @@ package com.example.backend.service.impl;
 
 import com.example.backend.model.OrderDetail;
 import com.example.backend.repository.OrderDetailRepository;
+import com.example.backend.repository.OrderRepository;
 import com.example.backend.service.OrderDetailService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderDetailServiceImpl implements OrderDetailService {
 
-    private final OrderDetailRepository orderDetailRepository;
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
+    private OrderDetailRepository orderDetailRepository;
 
     public OrderDetailServiceImpl(OrderDetailRepository orderDetailRepository) {
         this.orderDetailRepository = orderDetailRepository;
@@ -62,5 +68,10 @@ public class OrderDetailServiceImpl implements OrderDetailService {
     @Override
     public List<OrderDetail> getOrderDetailsByOrderId(String orderId) {
         return orderDetailRepository.findByOrderId(orderId);
+    }
+
+    @Override
+    public List<OrderDetail> getOrderDetailsWithOrderAndProduct(String userId) {
+        return orderDetailRepository.findByUserIdWithOrderAndProduct(userId);
     }
 }

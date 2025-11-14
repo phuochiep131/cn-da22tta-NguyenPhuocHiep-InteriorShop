@@ -11,4 +11,6 @@ public interface OrderDetailService {
     OrderDetail updateOrderDetail(String id, OrderDetail orderDetail);
     void deleteOrderDetail(String id);
     List<OrderDetail> getOrderDetailsByOrderId(String orderId);
+
+    List<OrderDetail> getOrderDetailsWithOrderAndProduct(String userId);
 }

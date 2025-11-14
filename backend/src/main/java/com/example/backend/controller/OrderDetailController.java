@@ -4,11 +4,11 @@ import com.example.backend.model.OrderDetail;
 import com.example.backend.service.OrderDetailService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/order-details")
+@CrossOrigin(origins = "*")
 public class OrderDetailController {
 
     private final OrderDetailService orderDetailService;
@@ -49,8 +49,9 @@ public class OrderDetailController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/order/{orderId}")
-    public List<OrderDetail> getByOrderId(@PathVariable String orderId) {
-        return orderDetailService.getOrderDetailsByOrderId(orderId);
+    // API trả về luôn order + product
+    @GetMapping("/user/{userId}")
+    public List<OrderDetail> getOrderDetailsWithOrderAndProduct(@PathVariable String userId) {
+        return orderDetailService.getOrderDetailsWithOrderAndProduct(userId);
     }
 }

@@ -17,6 +17,7 @@ import EditProfile from "./pages/user/profile/EditProfile";
 import Products from "./components/Products";
 import ProductDetail from "./pages/user/ProductDetail";
 import Checkout from "./pages/user/Checkout";
+import Purchase from "./pages/user/Purchase";
 
 export default function App() {
   return (
@@ -31,6 +32,8 @@ export default function App() {
           <Route path="/products" element={<Products />} />
           <Route path="/product/:productId" element={<ProductDetail />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/purchase" element={<Purchase />} />
+
         </Route>
 
         <Route path="/admin" element={<AdminLayout />}>
