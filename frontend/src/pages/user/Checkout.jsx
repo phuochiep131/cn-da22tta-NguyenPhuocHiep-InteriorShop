@@ -1,14 +1,14 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { message, Modal, Input, Select, Tag } from "antd";
+import { message, Modal, Input, Tag } from "antd";
 import {
-  NotebookPen,
-  Puzzle,
-  SquareChartGantt,
   MapPin,
   Edit,
   Trash2,
   Plus,
+  SquareChartGantt,
+  NotebookPen,
+  Puzzle,
 } from "lucide-react";
 import Cookies from "js-cookie";
 
@@ -16,7 +16,6 @@ export default function Checkout() {
   const { state } = useLocation();
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
-
   const token = Cookies.get("jwt");
 
   // Payment
@@ -31,7 +30,7 @@ export default function Checkout() {
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [tempSelectedCouponId, setTempSelectedCouponId] = useState(null);
 
-  // Address management
+  // Address
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -50,47 +49,27 @@ export default function Checkout() {
   const totalPrice = finalPrice * quantity;
   const totalPriceWithCoupon = Math.max(totalPrice - couponValue, 0);
 
+  // Fetch payment methods
   useEffect(() => {
-    const fetchPaymentMethods = async () => {
-      try {
-        const res = await fetch("http://localhost:8080/api/payment-methods", {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) throw new Error("Failed to fetch payment methods");
-
-        const data = await res.json();
-        //console.log(data)
-        setPaymentMethods(data);
-      } catch (err) {
-        messageApi.error("Không thể tải phương thức thanh toán");
-        console.error(err);
-      }
-    };
-
-    fetchPaymentMethods();
+    fetch("http://localhost:8080/api/payment-methods", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then(setPaymentMethods)
+      .catch(() => messageApi.error("Không thể tải phương thức thanh toán"));
   }, [token]);
 
+  // Fetch coupons
   useEffect(() => {
-    const fetchCoupons = async () => {
-      try {
-        const res = await fetch("http://localhost:8080/api/coupons", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-
-        setCoupons(data);
-      } catch {
-        messageApi.error("Không thể tải danh sách voucher");
-      }
-    };
-    fetchCoupons();
+    fetch("http://localhost:8080/api/coupons", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then(setCoupons)
+      .catch(() => messageApi.error("Không thể tải danh sách voucher"));
   }, []);
 
+  // Coupon selection
   const handleSelectCoupon = (couponId) => {
     const selected = coupons.find((c) => c.couponId === couponId);
     if (!selected) {
@@ -98,52 +77,69 @@ export default function Checkout() {
       setCouponValue(0);
       return;
     }
-
-    let discountAmount = 0;
-    if (selected.discountType === "percent") {
-      discountAmount = (totalPrice * selected.discountValue) / 100;
-    } else {
-      discountAmount = selected.discountValue;
-    }
-
+    let discountAmount =
+      selected.discountType === "percent"
+        ? (totalPrice * selected.discountValue) / 100
+        : selected.discountValue;
     setSelectedCouponId(couponId);
     setCouponValue(discountAmount);
   };
 
-  const handleConfirmOrder = () => {
+  // Confirm order
+  const handleConfirmOrder = async () => {
     const selectedAddress = addresses.find((a) => a.id === selectedAddressId);
-    console.log({
-      product_id: product.productId,
-      quantity,
-      payment_method: paymentMethod,
-      note,
-      coupon: selectedCouponId,
-      address: selectedAddress,
-      totalPayment: totalPriceWithCoupon,
-    });
-    messageApi.success("Đặt hàng thành công (demo)!");
-    navigate("/");
+    if (!selectedAddress)
+      return messageApi.warning("Vui lòng chọn địa chỉ nhận hàng!");
+    if (!product) return messageApi.warning("Không có sản phẩm để thanh toán!");
+
+    try {
+      const res = await fetch("http://localhost:8080/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: Cookies.get("user_id"),
+          paymentMethodId: paymentMethod,
+          shippingAddress: selectedAddress.address,
+          customerNote: note,
+          couponId: selectedCouponId ? parseInt(selectedCouponId) : null, 
+          totalAmount: totalPriceWithCoupon,
+          orderDetails: [
+            {
+              productId: product.productId,
+              quantity,
+              unitPrice: finalPrice,
+              originalUnitPrice: product.price,
+            },
+          ],
+        }),
+      });
+
+      if (!res.ok) throw new Error("Đặt hàng thất bại");
+
+      messageApi.success("Đặt hàng thành công!");
+      navigate("/orders");
+    } catch {
+      messageApi.error("Không thể tạo đơn hàng. Vui lòng thử lại.");
+    }
   };
 
+  // Address modal handlers
   const openAddModal = () => {
     setEditingAddress(null);
     setModalData({ name: "", phone: "", address: "" });
     setIsModalOpen(true);
   };
-  const openEditModal = (address) => {
-    setEditingAddress(address);
-    setModalData({
-      name: address.name,
-      phone: address.phone,
-      address: address.address,
-    });
+  const openEditModal = (addr) => {
+    setEditingAddress(addr);
+    setModalData({ name: addr.name, phone: addr.phone, address: addr.address });
     setIsModalOpen(true);
   };
   const handleSaveAddress = () => {
-    if (!modalData.name || !modalData.phone || !modalData.address) {
-      messageApi.warning("Vui lòng nhập đầy đủ thông tin!");
-      return;
-    }
+    if (!modalData.name || !modalData.phone || !modalData.address)
+      return messageApi.warning("Vui lòng nhập đầy đủ thông tin!");
     if (editingAddress) {
       setAddresses((prev) =>
         prev.map((a) =>
@@ -165,19 +161,18 @@ export default function Checkout() {
       setSelectedAddressId(addresses[0].id);
   };
 
-  if (!product) {
+  if (!product)
     return (
-      <p className="text-center text-gray-500 py-10">
+      <p className="text-center py-10 text-gray-500">
         Không có sản phẩm để thanh toán.
       </p>
     );
-  }
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
       {contextHolder}
 
-      {/* Địa chỉ nhận hàng */}
+      {/* Địa chỉ */}
       <div className="bg-white p-5 shadow-sm border-b mb-4">
         <h2 className="font-semibold mb-3 text-lg flex items-center gap-2 text-red-600">
           <MapPin className="w-5 h-5" /> Địa chỉ nhận hàng
@@ -186,12 +181,12 @@ export default function Checkout() {
           {addresses.map((addr) => (
             <div
               key={addr.id}
+              onClick={() => setSelectedAddressId(addr.id)}
               className={`flex items-start justify-between p-2 border rounded cursor-pointer ${
                 selectedAddressId === addr.id
                   ? "border-red-500"
                   : "border-gray-200"
               }`}
-              onClick={() => setSelectedAddressId(addr.id)}
             >
               <div>
                 <p className="font-semibold text-base">
@@ -253,7 +248,7 @@ export default function Checkout() {
             {product.price.toLocaleString("vi-VN")}₫
           </div>
           <div className="col-span-2 text-center text-red-600 font-semibold">
-            {quantity.toLocaleString("vi-VN")}
+            {quantity}
           </div>
           <div className="col-span-2 text-right font-bold text-base">
             {(finalPrice * quantity).toLocaleString("vi-VN")} ₫
@@ -271,16 +266,15 @@ export default function Checkout() {
           onChange={(e) => setNote(e.target.value)}
           className="w-full border rounded p-2 text-sm"
           placeholder="Lưu ý..."
-        ></textarea>
+        />
       </div>
 
-      {/* Chọn coupon */}
+      {/* Voucher */}
       <div className="bg-white p-5 shadow-sm mb-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-lg flex items-center gap-2">
             <Puzzle className="w-5 h-5" /> Voucher
           </h3>
-
           <a
             href="#"
             onClick={(e) => {
@@ -293,7 +287,6 @@ export default function Checkout() {
             Thay đổi
           </a>
         </div>
-
         {selectedCouponId ? (
           <Tag color="green">
             Đã chọn:{" "}
@@ -304,7 +297,7 @@ export default function Checkout() {
         )}
       </div>
 
-      {/* Phương thức thanh toán */}
+      {/* Thanh toán */}
       <div className="bg-white p-5 shadow-sm mb-4">
         <h3 className="font-semibold mb-3 text-lg flex items-center gap-2">
           <SquareChartGantt className="w-5 h-5" /> Phương thức thanh toán
@@ -328,7 +321,7 @@ export default function Checkout() {
         </div>
       </div>
 
-      {/* Tổng tiền + Đặt hàng */}
+      {/* Tổng tiền */}
       <div className="bg-white shadow-sm p-6 text-right rounded">
         <div className="text-gray-700 mb-3 text-base">
           Tổng thanh toán:
@@ -336,7 +329,6 @@ export default function Checkout() {
             {totalPriceWithCoupon.toLocaleString("vi-VN")} ₫
           </span>
         </div>
-
         <button
           onClick={handleConfirmOrder}
           className="bg-red-600 hover:bg-red-700 text-white px-10 py-3 rounded-lg font-semibold transition text-base"
@@ -345,7 +337,7 @@ export default function Checkout() {
         </button>
       </div>
 
-      {/* Modal thêm/sửa địa chỉ */}
+      {/* Modal địa chỉ */}
       <Modal
         title={editingAddress ? "Sửa địa chỉ" : "Thêm địa chỉ"}
         open={isModalOpen}
@@ -375,6 +367,7 @@ export default function Checkout() {
         />
       </Modal>
 
+      {/* Modal voucher */}
       <Modal
         title="Chọn mã giảm giá"
         open={isCouponModalOpen}
@@ -382,43 +375,34 @@ export default function Checkout() {
         footer={null}
         width={700}
       >
-        {/* Thanh tìm kiếm */}
         <div className="flex items-center gap-2 mb-4">
           <Input placeholder="Mã Voucher" className="flex-1" />
           <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition">
             Áp dụng
           </button>
         </div>
-
-        <h4 className="font-semibold mb-2 text-gray-700">
-          Mã giảm giá khả dụng
-        </h4>
-
         <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
           {coupons.length === 0 ? (
             <p className="text-gray-500 text-sm">Không có mã giảm giá nào.</p>
           ) : (
             coupons.map((c) => {
               const isInactive = !c.isActive;
-              const isSelected = selectedCouponId === c.couponId;
+              const isSelected = tempSelectedCouponId === c.couponId;
               return (
                 <div
                   key={c.couponId}
-                  onClick={() => {
-                    if (!isInactive) setTempSelectedCouponId(c.couponId);
-                  }}
+                  onClick={() =>
+                    !isInactive && setTempSelectedCouponId(c.couponId)
+                  }
                   className={`flex items-center border rounded-lg p-3 transition cursor-pointer ${
                     isInactive
                       ? "opacity-50 cursor-not-allowed bg-gray-50"
                       : "hover:shadow-md hover:border-blue-400"
                   } ${isSelected ? "border-blue-500" : "border-gray-200"}`}
                 >
-                  {/* Hình trái */}
                   <div className="w-24 h-24 bg-cyan-100 flex items-center justify-center rounded-md text-cyan-600 font-bold text-sm shrink-0">
                     {c.couponType === "freeship" ? "FREESHIP" : "GIẢM GIÁ"}
                   </div>
-
-                  {/* Nội dung giữa */}
                   <div className="flex-1 px-4">
                     <p className="font-semibold text-gray-800">Mã ưu đãi</p>
                     <p className="text-sm text-gray-600">{c.description}</p>
@@ -426,20 +410,13 @@ export default function Checkout() {
                       Dành riêng cho bạn
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      HSD:{" "}
-                      {new Date(c.endDate).toLocaleDateString("vi-VN", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })}{" "}
+                      HSD: {new Date(c.endDate).toLocaleDateString("vi-VN")}
                     </p>
                   </div>
-
-                  {/* Checkbox phải */}
                   <div className="pr-2">
                     <input
                       type="radio"
-                      checked={tempSelectedCouponId === c.couponId}
+                      checked={isSelected}
                       readOnly
                       className="w-5 h-5 accent-blue-500 cursor-pointer"
                     />
@@ -449,8 +426,6 @@ export default function Checkout() {
             })
           )}
         </div>
-
-        {/* Footer giống Shopee */}
         <div className="flex justify-end gap-3 mt-5 border-t pt-4">
           <button
             onClick={() => setIsCouponModalOpen(false)}
@@ -460,12 +435,7 @@ export default function Checkout() {
           </button>
           <button
             onClick={() => {
-              if (tempSelectedCouponId) {
-                handleSelectCoupon(tempSelectedCouponId);
-              } else {
-                setSelectedCouponId(null);
-                setCouponValue(0);
-              }
+              handleSelectCoupon(tempSelectedCouponId);
               setIsCouponModalOpen(false);
             }}
             className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"

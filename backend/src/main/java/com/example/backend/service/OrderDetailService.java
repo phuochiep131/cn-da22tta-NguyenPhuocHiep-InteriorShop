@@ -6,9 +6,11 @@ import java.util.Optional;
 
 public interface OrderDetailService {
     List<OrderDetail> getAllOrderDetails();
-    Optional<OrderDetail> getOrderDetailById(Integer id);
+    Optional<OrderDetail> getOrderDetailById(String id);
     OrderDetail createOrderDetail(OrderDetail orderDetail);
-    OrderDetail updateOrderDetail(Integer id, OrderDetail orderDetail);
-    void deleteOrderDetail(Integer id);
+    OrderDetail updateOrderDetail(String id, OrderDetail orderDetail);
+    void deleteOrderDetail(String id);
     List<OrderDetail> getOrderDetailsByOrderId(String orderId);
+
+    List<OrderDetail> getOrderDetailsWithOrderAndProduct(String userId);
 }

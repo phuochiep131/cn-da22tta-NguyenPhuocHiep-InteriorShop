@@ -11,20 +11,21 @@ export default function Login() {
   const { user, login } = useContext(AuthContext);
 
   // 🧠 Nếu người dùng được chuyển từ trang Register, lấy sẵn email và password
-  const initialEmail = location.state?.email || localStorage.getItem("rememberEmail") || "";
+  const initialEmail =
+    location.state?.email || localStorage.getItem("rememberEmail") || "";
   const initialPassword = location.state?.password || "";
 
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState(initialPassword);
-  const [remember, setRemember] = useState(!!localStorage.getItem("rememberEmail"));
+  const [remember, setRemember] = useState(
+    !!localStorage.getItem("rememberEmail")
+  );
   const [loading, setLoading] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
-  useEffect(() => {
-    
-  }, [location.state, messageApi]);
+  useEffect(() => {}, [location.state, messageApi]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -77,7 +78,9 @@ export default function Login() {
               <form className="space-y-4" onSubmit={handleLogin}>
                 {/* Email */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Email
+                  </label>
                   <input
                     type="email"
                     value={email}
@@ -91,7 +94,9 @@ export default function Login() {
 
                 {/* Mật khẩu */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700">Mật khẩu</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Mật khẩu
+                  </label>
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}

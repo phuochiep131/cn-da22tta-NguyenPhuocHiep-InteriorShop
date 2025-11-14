@@ -139,6 +139,16 @@ export default function Header() {
                   )}
 
                   <button
+                    onClick={() => {
+                      navigate("/purchase");
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    <ShoppingCart size={16} /> Đơn mua
+                  </button>
+
+                  <button
                     onClick={handleProfile}
                     className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 flex items-center gap-2"
                   >

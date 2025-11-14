@@ -4,11 +4,11 @@ import com.example.backend.model.OrderDetail;
 import com.example.backend.service.OrderDetailService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/order-details")
+@CrossOrigin(origins = "*")
 public class OrderDetailController {
 
     private final OrderDetailService orderDetailService;
@@ -23,7 +23,7 @@ public class OrderDetailController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<OrderDetail> getById(@PathVariable Integer id) {
+    public ResponseEntity<OrderDetail> getById(@PathVariable String id) {
         return orderDetailService.getOrderDetailById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -35,7 +35,7 @@ public class OrderDetailController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<OrderDetail> update(@PathVariable Integer id, @RequestBody OrderDetail orderDetail) {
+    public ResponseEntity<OrderDetail> update(@PathVariable String id, @RequestBody OrderDetail orderDetail) {
         try {
             return ResponseEntity.ok(orderDetailService.updateOrderDetail(id, orderDetail));
         } catch (RuntimeException e) {
@@ -44,13 +44,14 @@ public class OrderDetailController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+    public ResponseEntity<Void> delete(@PathVariable String id) {
         orderDetailService.deleteOrderDetail(id);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/order/{orderId}")
-    public List<OrderDetail> getByOrderId(@PathVariable String orderId) {
-        return orderDetailService.getOrderDetailsByOrderId(orderId);
+    // API trả về luôn order + product
+    @GetMapping("/user/{userId}")
+    public List<OrderDetail> getOrderDetailsWithOrderAndProduct(@PathVariable String userId) {
+        return orderDetailService.getOrderDetailsWithOrderAndProduct(userId);
     }
 }
