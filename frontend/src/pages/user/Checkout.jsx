@@ -9,6 +9,8 @@ import {
   SquareChartGantt,
   NotebookPen,
   Puzzle,
+  UserRound,
+  Phone,
 } from "lucide-react";
 import Cookies from "js-cookie";
 
@@ -77,10 +79,11 @@ export default function Checkout() {
       setCouponValue(0);
       return;
     }
-    let discountAmount =
+    const discountAmount =
       selected.discountType === "percent"
         ? (totalPrice * selected.discountValue) / 100
         : selected.discountValue;
+
     setSelectedCouponId(couponId);
     setCouponValue(discountAmount);
   };
@@ -91,6 +94,26 @@ export default function Checkout() {
     if (!selectedAddress)
       return messageApi.warning("Vui lòng chọn địa chỉ nhận hàng!");
     if (!product) return messageApi.warning("Không có sản phẩm để thanh toán!");
+    console.log("product", product);
+
+
+    const orderPayload = {
+      userId: Cookies.get("user_id"),
+      paymentMethodId: paymentMethod,
+      shippingAddress: `${selectedAddress.name} - ${selectedAddress.phone} - ${selectedAddress.address}`,
+      customerNote: note,
+      couponId: selectedCouponId ? parseInt(selectedCouponId) : null,
+      totalAmount: totalPriceWithCoupon,
+      orderStatus: "pending",
+      orderDetails: [
+        {
+          product: { productId: product.productId },
+          quantity,
+          unitPrice: finalPrice,
+          originalUnitPrice: product.price,
+        },
+      ],
+    };
 
     try {
       const res = await fetch("http://localhost:8080/api/orders", {
@@ -99,30 +122,28 @@ export default function Checkout() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          userId: Cookies.get("user_id"),
-          paymentMethodId: paymentMethod,
-          shippingAddress: selectedAddress.address,
-          customerNote: note,
-          couponId: selectedCouponId ? parseInt(selectedCouponId) : null, 
-          totalAmount: totalPriceWithCoupon,
-          orderDetails: [
-            {
-              productId: product.productId,
-              quantity,
-              unitPrice: finalPrice,
-              originalUnitPrice: product.price,
-            },
-          ],
-        }),
+        body: JSON.stringify(orderPayload),
       });
 
-      if (!res.ok) throw new Error("Đặt hàng thất bại");
+      if (!res.ok) {
+        // Cố gắng parse JSON lỗi nếu có
+        let errorMessage = "Đặt hàng thất bại";
+        try {
+          const errData = await res.json();
+          errorMessage = errData.message || errorMessage;
+        } catch {
+          // JSON rỗng → giữ nguyên message default
+        }
+        throw new Error(errorMessage);
+      }
 
       messageApi.success("Đặt hàng thành công!");
-      navigate("/orders");
-    } catch {
-      messageApi.error("Không thể tạo đơn hàng. Vui lòng thử lại.");
+      navigate("/purchase");
+    } catch (err) {
+      console.error(err);
+      messageApi.error(
+        err.message || "Không thể tạo đơn hàng. Vui lòng thử lại."
+      );
     }
   };
 
@@ -140,6 +161,7 @@ export default function Checkout() {
   const handleSaveAddress = () => {
     if (!modalData.name || !modalData.phone || !modalData.address)
       return messageApi.warning("Vui lòng nhập đầy đủ thông tin!");
+
     if (editingAddress) {
       setAddresses((prev) =>
         prev.map((a) =>
@@ -345,25 +367,28 @@ export default function Checkout() {
         onCancel={() => setIsModalOpen(false)}
       >
         <Input
-          placeholder="Họ và tên"
+          placeholder="Họ và tên người nhận"
           value={modalData.name}
           onChange={(e) => setModalData({ ...modalData, name: e.target.value })}
           className="mb-2"
+          prefix={<UserRound className="w-4 h-4 text-gray-500" />}
         />
         <Input
-          placeholder="Số điện thoại"
+          placeholder="Số điện thoại người nhận"
           value={modalData.phone}
           onChange={(e) =>
             setModalData({ ...modalData, phone: e.target.value })
           }
           className="mb-2"
+          prefix={<Phone className="w-4 h-4 text-gray-500" />}
         />
         <Input
-          placeholder="Địa chỉ"
+          placeholder="Địa chỉ nhận hàng"
           value={modalData.address}
           onChange={(e) =>
             setModalData({ ...modalData, address: e.target.value })
           }
+          prefix={<MapPin className="w-4 h-4 text-gray-500" />}
         />
       </Modal>
 

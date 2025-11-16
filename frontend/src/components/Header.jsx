@@ -67,18 +67,16 @@ export default function Header() {
 
         {/* Cart + User */}
         <div className="hidden md:flex space-x-3 items-center relative">
-          {/* 🛒 Giỏ hàng có badge */}
           <div className="relative">
             <button className="text-gray-800 p-2 rounded-md hover:bg-gray-900 hover:text-white transition relative">
               <ShoppingCart size={22} />
-              {/* 🔵 Badge hiển thị số lượng */}
               <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-semibold rounded-full px-[6px] py-[1px]">
                 {cartCount}
               </span>
             </button>
           </div>
 
-          {/* 👤 User / Đăng nhập / Đăng ký */}
+          {/* User / Đăng nhập / Đăng ký */}
           {!isLoggedIn ? (
             <div className="flex space-x-2">
               <Link
