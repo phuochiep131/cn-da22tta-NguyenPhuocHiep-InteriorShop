@@ -35,39 +35,15 @@ export default function Purchase() {
           return;
         }
 
-        const detailRes = await fetch(
-          `http://localhost:8080/api/order-details/user/${userId}`,
+        const res = await fetch(
+          `http://localhost:8080/api/orders/user/${userId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        if (!detailRes.ok)
-          throw new Error("Không thể tải danh sách order details");
+        if (!res.ok) throw new Error("Không thể tải danh sách đơn hàng");
 
-        const details = await detailRes.json();
-
-        const grouped = {};
-
-        details.forEach((d) => {
-          const oid = d.order.orderId;
-
-          if (!grouped[oid]) {
-            grouped[oid] = {
-              ...d.order,
-              orderDetails: [],
-            };
-          }
-
-          grouped[oid].orderDetails.push({
-            orderDetailId: d.orderDetailId,
-            productId: d.product.productId,
-            quantity: d.quantity,
-            originalUnitPrice: d.originalUnitPrice,
-            product: d.product,
-          });
-        });
-
-        setOrders(Object.values(grouped));
-        console.log(Object.values(grouped));
+        const data = await res.json();
+        setOrders(data); // backend đã trả về sẵn list OrderDTO
       } catch (err) {
         message.error(err.message);
       }
@@ -79,7 +55,10 @@ export default function Purchase() {
   const filteredOrders =
     filter === "all"
       ? orders
-      : orders.filter((o) => (o.orderStatus || "").toLowerCase() === filter);
+      : orders.filter(
+          (o) =>
+            (o.orderStatus || "pending").toLowerCase() === filter.toLowerCase()
+        );
 
   return (
     <div className="max-w-4xl mx-auto mt-6 pb-6">
@@ -142,29 +121,25 @@ export default function Purchase() {
             ))}
 
             {/* Tổng tiền */}
-            <div className="flex justify-end px-5 py-4 text-[15px]">
+            <div className="flex justify-end items-center px-3 py-3 text-[15px]">
               Thành tiền:
-              <span className="ml-2 text-red-600 font-bold text-[17px]">
+              <span className="ml-2 text-red-600 font-bold text-[22px]">
                 {order.totalAmount.toLocaleString()}₫
               </span>
             </div>
 
             {/* Nút */}
             <div className="flex justify-end gap-3 px-5 py-4">
-              {/* Nút Hủy */}
               <button
                 disabled={order.orderStatus !== "pending"}
-                className={`px-6 py-2 rounded-lg text-sm border 
-                  ${
-                    order.orderStatus === "pending"
-                      ? "border-red-500 text-red-500 hover:bg-red-50"
-                      : "border-gray-300 text-gray-400 cursor-not-allowed"
-                  }`}
+                className={`px-6 py-2 rounded-lg text-sm border ${
+                  order.orderStatus === "pending"
+                    ? "border-red-500 text-red-500 hover:bg-red-50"
+                    : "border-gray-300 text-gray-400 cursor-not-allowed"
+                }`}
               >
                 Hủy Đơn
               </button>
-
-              {/* Nút Mua lại */}
               <button className="px-8 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">
                 Mua Lại
               </button>

@@ -50,8 +50,8 @@ public class OrderDetailServiceImpl implements OrderDetailService {
     public OrderDetail updateOrderDetail(String id, OrderDetail orderDetail) {
         return orderDetailRepository.findById(id)
                 .map(existing -> {
-                    existing.setOrderId(orderDetail.getOrderId());
-                    existing.setProductId(orderDetail.getProductId());
+                    existing.setOrder(orderDetail.getOrder());
+                    existing.setProduct(orderDetail.getProduct());
                     existing.setQuantity(orderDetail.getQuantity());
                     existing.setUnitPrice(orderDetail.getUnitPrice());
                     existing.setOriginalUnitPrice(orderDetail.getOriginalUnitPrice());
@@ -67,7 +67,7 @@ public class OrderDetailServiceImpl implements OrderDetailService {
 
     @Override
     public List<OrderDetail> getOrderDetailsByOrderId(String orderId) {
-        return orderDetailRepository.findByOrderId(orderId);
+        return orderDetailRepository.findByOrderOrderId(orderId);
     }
 
     @Override

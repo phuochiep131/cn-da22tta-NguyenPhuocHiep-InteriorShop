@@ -40,8 +40,8 @@ export default function AdminLayout() {
       case "coupons":
         navigate("/admin/coupons");
         break;
-      case "orders":
-        navigate("/admin/orders");
+      case "orders-manager":
+        navigate("/admin/orders-manager");
         break;
       case "stats":
         navigate("/admin/statistics");
@@ -63,7 +63,7 @@ export default function AdminLayout() {
     { key: "products", icon: <ShoppingOutlined />, label: "Sản phẩm" },
     { key: "payment-methods", icon: <ShoppingOutlined />, label: "Phương thức thanh toán" },
     { key: "coupons", icon: <DollarOutlined />, label: "Mã giảm giá" },
-    { key: "orders", icon: <DollarOutlined />, label: "Đơn hàng" },
+    { key: "orders-manager", icon: <DollarOutlined />, label: "Đơn hàng" },
     { key: "stats", icon: <BarChartOutlined />, label: "Thống kê" },
     { key: "logout", icon: <LogoutOutlined />, label: "Đăng xuất" },
   ];
