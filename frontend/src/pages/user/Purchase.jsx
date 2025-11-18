@@ -130,6 +130,7 @@ export default function Purchase() {
 
             {/* Nút */}
             <div className="flex justify-end gap-3 px-5 py-4">
+              {/* Nút hủy đơn — chỉ cho phép nếu đang chờ xử lý */}
               <button
                 disabled={order.orderStatus !== "pending"}
                 className={`px-6 py-2 rounded-lg text-sm border ${
@@ -140,9 +141,12 @@ export default function Purchase() {
               >
                 Hủy Đơn
               </button>
-              <button className="px-8 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">
-                Mua Lại
-              </button>
+
+              {order.orderStatus === "delivered" && (
+                <button className="px-8 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">
+                  Mua Lại
+                </button>
+              )}
             </div>
           </div>
         ))
