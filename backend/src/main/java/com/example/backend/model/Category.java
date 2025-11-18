@@ -1,45 +1,26 @@
 package com.example.backend.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 
 @Entity
 @Table(name = "CATEGORIES")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Category {
 
     @Id
     @Column(name = "category_id", length = 50)
-    private String CategoryId;
+    private String categoryId;
 
     @Column(name = "category_name", length = 100)
-    private String CategoryName;
+    private String categoryName;
 
     @Column(name = "description", length = 255)
-    private String Description;
-
-    public String getCategoryId() {
-        return CategoryId;
-    }
-
-    public void setCategoryId(String categoryId) {
-        CategoryId = categoryId;
-    }
-
-    public String getCategoryName() {
-        return CategoryName;
-    }
-
-    public void setCategoryName(String categoryName) {
-        CategoryName = categoryName;
-    }
-
-    public String getDescription() {
-        return Description;
-    }
-
-    public void setDescription(String description) {
-        Description = description;
-    }
+    private String description;
 }

@@ -104,6 +104,7 @@ export default function Checkout() {
       customerNote: note,
       couponId: selectedCouponId ? parseInt(selectedCouponId) : null,
       totalAmount: totalPriceWithCoupon,
+      isOrder: true,
       orderStatus: "pending",
       orderDetails: [
         {

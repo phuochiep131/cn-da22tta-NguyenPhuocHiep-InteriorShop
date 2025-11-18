@@ -4,13 +4,19 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "order_details")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class OrderDetail {
 
     @Id
@@ -47,56 +53,8 @@ public class OrderDetail {
         return "OD" + LocalDateTime.now().format(formatter);
     }
 
+    // Tính subtotal
     public BigDecimal getSubtotal() {
         return unitPrice.multiply(BigDecimal.valueOf(quantity));
-    }
-
-    // Getters & Setters
-    public String getOrderDetailId() {
-        return orderDetailId;
-    }
-
-    public void setOrderDetailId(String orderDetailId) {
-        this.orderDetailId = orderDetailId;
-    }
-
-    public Order getOrder() {
-        return order;
-    }
-
-    public void setOrder(Order order) {
-        this.order = order;
-    }
-
-    public Product getProduct() {
-        return product;
-    }
-
-    public void setProduct(Product product) {
-        this.product = product;
-    }
-
-    public int getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
-    }
-
-    public BigDecimal getUnitPrice() {
-        return unitPrice;
-    }
-
-    public void setUnitPrice(BigDecimal unitPrice) {
-        this.unitPrice = unitPrice;
-    }
-
-    public BigDecimal getOriginalUnitPrice() {
-        return originalUnitPrice;
-    }
-
-    public void setOriginalUnitPrice(BigDecimal originalUnitPrice) {
-        this.originalUnitPrice = originalUnitPrice;
     }
 }
