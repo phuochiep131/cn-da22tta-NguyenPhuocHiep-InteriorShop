@@ -1,22 +1,16 @@
 import { useState, useEffect, useRef, useContext } from "react";
-import {
-  Menu,
-  X,
-  ShoppingCart,
-  User,
-  Lock,
-  LogOut,
-  Shield,
-} from "lucide-react";
+import { Menu, X, ShoppingCart, User, Lock, LogOut, Shield } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import MainMenu from "./MainMenu";
 import { message } from "antd";
+import Cookies from "js-cookie";
+import { CartContext } from "../context/CartContext";
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+  const { cartCount, refreshCartCount } = useContext(CartContext);
   const menuRef = useRef(null);
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
@@ -24,10 +18,13 @@ export default function Header() {
   const { user, logout } = useContext(AuthContext);
   const isLoggedIn = !!user;
 
+  const userId = Cookies.get("user_id");
+  const token = Cookies.get("jwt");
+
+
   useEffect(() => {
-    const count = localStorage.getItem("cartCount") || 0;
-    setCartCount(Number(count));
-  }, []);
+    if (user) refreshCartCount(userId, token);
+  }, [user, token]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -61,9 +58,7 @@ export default function Header() {
       {contextHolder}
       <div className="px-4 py-3 flex items-center justify-between">
         {/* Logo */}
-        <div className="text-xl md:text-2xl font-bold text-gray-900 pl-[10%]">
-          Logo
-        </div>
+        <div className="text-xl md:text-2xl font-bold text-gray-900 pl-[10%]">Logo</div>
 
         {/* Cart + User */}
         <div className="hidden md:flex space-x-3 items-center relative">
@@ -76,19 +71,12 @@ export default function Header() {
             </button>
           </div>
 
-          {/* User / Đăng nhập / Đăng ký */}
           {!isLoggedIn ? (
             <div className="flex space-x-2">
-              <Link
-                to="/register"
-                className="text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition flex items-center gap-1"
-              >
+              <Link to="/register" className="text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition flex items-center gap-1">
                 <User size={18} /> Đăng ký
               </Link>
-              <Link
-                to="/login"
-                className="text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-blue-600 hover:text-white transition flex items-center gap-1 border border-blue-600"
-              >
+              <Link to="/login" className="text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-blue-600 hover:text-white transition flex items-center gap-1 border border-blue-600">
                 <User size={18} /> Đăng nhập
               </Link>
             </div>
@@ -99,15 +87,7 @@ export default function Header() {
                 className="flex items-center gap-2 text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition"
               >
                 <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-100">
-                  {user.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt="avatar"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User size={20} className="text-gray-500" />
-                  )}
+                  {user.avatar ? <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" /> : <User size={20} className="text-gray-500" />}
                 </div>
                 <span>{user.fullName || user.email}</span>
               </button>
@@ -115,9 +95,7 @@ export default function Header() {
               {showUserMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
                   <div className="px-4 py-2 border-b text-sm text-gray-700">
-                    <div className="font-medium">
-                      {user.fullName || user.email}
-                    </div>
+                    <div className="font-medium">{user.fullName || user.email}</div>
                     <div className="flex items-center text-xs text-gray-500 mt-1">
                       <Shield size={14} className="mr-1" />
                       {user.role || "USER"}
@@ -126,10 +104,7 @@ export default function Header() {
 
                   {user.role === "ADMIN" && (
                     <button
-                      onClick={() => {
-                        navigate("/admin");
-                        setShowUserMenu(false);
-                      }}
+                      onClick={() => { navigate("/admin"); setShowUserMenu(false); }}
                       className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 flex items-center gap-2"
                     >
                       <Shield size={16} /> Admin Dashboard
@@ -137,33 +112,21 @@ export default function Header() {
                   )}
 
                   <button
-                    onClick={() => {
-                      navigate("/purchase");
-                      setShowUserMenu(false);
-                    }}
+                    onClick={() => { navigate("/purchase"); setShowUserMenu(false); }}
                     className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 flex items-center gap-2"
                   >
                     <ShoppingCart size={16} /> Đơn mua
                   </button>
 
-                  <button
-                    onClick={handleProfile}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 flex items-center gap-2"
-                  >
+                  <button onClick={handleProfile} className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 flex items-center gap-2">
                     <User size={16} /> Thông tin cá nhân
                   </button>
 
-                  <button
-                    onClick={handleChangePassword}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 flex items-center gap-2"
-                  >
+                  <button onClick={handleChangePassword} className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 flex items-center gap-2">
                     <Lock size={16} /> Đổi mật khẩu
                   </button>
 
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center gap-2 border-t"
-                  >
+                  <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center gap-2 border-t">
                     <LogOut size={16} /> Đăng xuất
                   </button>
                 </div>
@@ -173,10 +136,7 @@ export default function Header() {
         </div>
 
         {/* Nút menu mobile */}
-        <button
-          className="md:hidden p-2 text-gray-700"
-          onClick={() => setIsOpen(!isOpen)}
-        >
+        <button className="md:hidden p-2 text-gray-700" onClick={() => setIsOpen(!isOpen)}>
           {isOpen ? <X size={26} /> : <Menu size={26} />}
         </button>
       </div>

@@ -127,13 +127,12 @@ export default function Checkout() {
       });
 
       if (!res.ok) {
-        // Cố gắng parse JSON lỗi nếu có
         let errorMessage = "Đặt hàng thất bại";
         try {
           const errData = await res.json();
           errorMessage = errData.message || errorMessage;
         } catch {
-          // JSON rỗng → giữ nguyên message default
+          //
         }
         throw new Error(errorMessage);
       }

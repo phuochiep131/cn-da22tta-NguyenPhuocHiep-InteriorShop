@@ -27,8 +27,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     public OrderServiceImpl(OrderRepository orderRepository,
-                            ProductRepository productRepository,
-                            OrderDetailRepository orderDetailRepository) {
+            ProductRepository productRepository,
+            OrderDetailRepository orderDetailRepository) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.orderDetailRepository = orderDetailRepository;
@@ -87,7 +87,10 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public void deleteOrder(String orderId) {
-        orderRepository.deleteById(orderId);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        orderRepository.delete(order);
     }
 
     @Override
