@@ -41,7 +41,8 @@ public class OrderController {
     @GetMapping("/{orderId}")
     public ResponseEntity<Order> getOrderById(@PathVariable String orderId) {
         Order order = orderService.getOrderById(orderId);
-        if (order != null) return ResponseEntity.ok(order);
+        if (order != null)
+            return ResponseEntity.ok(order);
         return ResponseEntity.notFound().build();
     }
 
@@ -54,4 +55,15 @@ public class OrderController {
             return ResponseEntity.status(404).body("Không tìm thấy đơn hàng");
         }
     }
+
+    @DeleteMapping("/{orderId}")
+    public ResponseEntity<String> deleteOrder(@PathVariable String orderId) {
+        try {
+            orderService.deleteOrder(orderId);
+            return ResponseEntity.ok("Xóa đơn hàng thành công");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body("Không tìm thấy đơn hàng");
+        }
+    }
+
 }

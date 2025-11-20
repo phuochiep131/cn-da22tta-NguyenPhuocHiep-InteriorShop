@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { ShoppingCartOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import { message } from "antd";
 import { Eye } from "lucide-react";
+import Cookies from "js-cookie";
+import { CartContext } from "../context/CartContext.jsx";
 
 export default function Products({ searchTerm = "", priceRange }) {
   const [products, setProducts] = useState([]);
@@ -12,6 +14,9 @@ export default function Products({ searchTerm = "", priceRange }) {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const categoryId = params.get("category");
+  const token = Cookies.get("jwt");
+
+  const { refreshCartCount } = useContext(CartContext);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -62,8 +67,60 @@ export default function Products({ searchTerm = "", priceRange }) {
     }
   }, [searchTerm, filteredProducts.length, loading]);
 
-  const handleAddToCart = (product) =>
-    messageApi.success(`Đã thêm ${product.productName} vào giỏ hàng!`);
+  const handleAddToCart = async (product) => {
+    const finalPrice = product.discount > 0
+      ? product.price * (1 - product.discount / 100)
+      : product.price;
+
+    const orderPayload = {
+      userId: Cookies.get("user_id"),
+      paymentMethodId: null,
+      shippingAddress: "",
+      customerNote: "",
+      couponId: null,
+      totalAmount: finalPrice,
+      isOrder: false,
+      orderStatus: "pending",
+      orderDetails: [
+        {
+          product: { productId: product.productId },
+          quantity: 1,
+          unitPrice: finalPrice,
+          originalUnitPrice: product.price,
+        },
+      ],
+    };
+
+    try {
+      const res = await fetch("http://localhost:8080/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderPayload),
+      });
+
+      if (!res.ok) {
+        let errorMessage = "Thêm vào giỏ hàng thất bại";
+        try {
+          const errData = await res.json();
+          errorMessage = errData.message || errorMessage;
+        } catch {
+          //
+        }
+        throw new Error(errorMessage);
+      }
+
+      messageApi.success(`Đã thêm ${product.productName} vào giỏ hàng!`);
+
+      refreshCartCount(Cookies.get("user_id"), token);
+
+    } catch (err) {
+      console.error(err);
+      messageApi.error(err.message || "Không thể thêm vào giỏ hàng. Vui lòng thử lại.");
+    }
+  };
 
   if (loading) {
     return (
@@ -100,7 +157,6 @@ export default function Products({ searchTerm = "", priceRange }) {
                     alt={prod.productName}
                     className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-
                   {prod.discount > 0 && (
                     <span className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-xl shadow">
                       -{prod.discount}%

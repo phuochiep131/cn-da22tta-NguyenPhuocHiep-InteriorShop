@@ -10,9 +10,9 @@ public interface OrderService {
     Order getOrderById(String orderId);
     Order createOrder(Order order);
     Order updateOrder(String orderId, Order order);
-    void deleteOrder(String orderId);
     List<Order> getOrdersByUser(String userId);
     void updateOrderStatus(String orderId, String status);
+    void deleteOrder(String orderId);
 
     // Method DTO
     List<OrderDTO> getOrdersByUserId(String userId);
