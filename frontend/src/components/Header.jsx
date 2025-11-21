@@ -10,7 +10,7 @@ import { CartContext } from "../context/CartContext";
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { cartCount, refreshCartCount } = useContext(CartContext);
+  const { cartCount, refreshCartCount, resetCartCount } = useContext(CartContext);
   const menuRef = useRef(null);
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
@@ -49,6 +49,8 @@ export default function Header() {
   const handleLogout = () => {
     logout();
     messageApi.success("Đăng xuất thành công!");
+    resetCartCount();
+
     setShowUserMenu(false);
     navigate("/");
   };
@@ -63,7 +65,9 @@ export default function Header() {
         {/* Cart + User */}
         <div className="hidden md:flex space-x-3 items-center relative">
           <div className="relative">
-            <button className="text-gray-800 p-2 rounded-md hover:bg-gray-900 hover:text-white transition relative">
+            <button 
+            onClick={() => navigate("/cart")}
+            className="text-gray-800 p-2 rounded-md hover:bg-gray-900 hover:text-white transition relative">
               <ShoppingCart size={22} />
               <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-semibold rounded-full px-[6px] py-[1px]">
                 {cartCount}

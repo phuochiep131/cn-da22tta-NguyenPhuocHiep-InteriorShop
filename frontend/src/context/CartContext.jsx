@@ -22,15 +22,18 @@ export const CartProvider = ({ children }) => {
 
       if (!res.ok) throw new Error("Failed to fetch cart count");
 
-      const data = await res.json();
-      setCartCount(data.count);
+      const count = await res.json();      
+      setCartCount(count);
     } catch (err) {
       console.error("CartContext error:", err);
     }
   };
 
+  const resetCartCount = () => setCartCount(0);
+
+
   return (
-    <CartContext.Provider value={{ cartCount, setCartCount, refreshCartCount }}>
+    <CartContext.Provider value={{ cartCount, setCartCount, refreshCartCount, resetCartCount }}>
       {children}
     </CartContext.Provider>
   );

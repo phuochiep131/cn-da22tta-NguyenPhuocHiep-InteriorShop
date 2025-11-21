@@ -1,8 +1,9 @@
 package com.example.backend.controller;
 
-import com.example.backend.DTO.CartCountDTO;
+import com.example.backend.DTO.OrderDTO;
 import com.example.backend.service.CartService;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -16,9 +17,13 @@ public class CartController {
     }
 
     @GetMapping("/count/user/{userId}")
-    public CartCountDTO getCartCount(@PathVariable String userId) {
-        int count = cartService.getCartCount(userId);
-        return new CartCountDTO(userId, count);
+    public int getCartCount(@PathVariable String userId) {
+        return cartService.getCartCount(userId);
+    }
+
+    @GetMapping("/items/{userId}")
+    public List<OrderDTO> getCartOrders(@PathVariable String userId) {
+        return cartService.getCartOrders(userId);
     }
 
 }
