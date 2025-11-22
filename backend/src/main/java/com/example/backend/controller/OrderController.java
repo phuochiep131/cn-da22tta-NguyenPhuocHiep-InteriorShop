@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -31,12 +32,18 @@ public class OrderController {
         }
     }
 
-
     @PostMapping
-    public ResponseEntity<Order> createOrder(@RequestBody Order order) {
-        Order savedOrder = orderService.createOrder(order);
-        return ResponseEntity.ok(savedOrder);
+    public ResponseEntity<?> createOrder(@RequestBody Order order) {
+        try {
+            Order savedOrder = orderService.createOrder(order);
+            return ResponseEntity.ok(savedOrder);
+        } catch (RuntimeException ex) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("message", ex.getMessage()));
+        }
     }
+
 
     @PostMapping("/replace")
     public ResponseEntity<?> replaceOrder(@RequestBody OrderReplaceRequest request) {
@@ -47,7 +54,6 @@ public class OrderController {
             return ResponseEntity.status(400).body(e.getMessage());
         }
     }
-
 
     @GetMapping
     public ResponseEntity<List<Order>> getAllOrders() {

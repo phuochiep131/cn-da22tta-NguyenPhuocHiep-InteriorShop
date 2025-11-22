@@ -55,6 +55,27 @@ public class OrderServiceImpl implements OrderService {
             for (OrderDetail detail : order.getOrderDetails()) {
                 Product product = productRepository.findById(detail.getProduct().getProductId())
                         .orElseThrow(() -> new RuntimeException("Product not found"));
+
+                if (!order.getIsOrder()) {
+                    // Kiểm tra sản phẩm đã tồn tại trong giỏ hàng
+                    boolean exists = orderRepository.existsByUserIdAndProductIdAndIsOrderFalse(
+                            order.getUserId(),
+                            product.getProductId()
+                    );
+                    if (exists) {
+                        throw new RuntimeException("Sản phẩm " + product.getProductName() + " đã tồn tại trong giỏ hàng");
+                    }
+                }
+
+                // Chỉ trừ số lượng khi isOrder = true
+                if (order.getIsOrder()) {
+                    if (product.getQuantity() < detail.getQuantity()) {
+                        throw new RuntimeException("Số lượng sản phẩm " + product.getProductName() + " không đủ");
+                    }
+                    product.setQuantity(product.getQuantity() - detail.getQuantity());
+                    productRepository.save(product);
+                }
+
                 detail.setProduct(product);
                 detail.setOrder(order);
             }
@@ -62,6 +83,7 @@ public class OrderServiceImpl implements OrderService {
 
         return orderRepository.save(order);
     }
+
 
     @Override
     @Transactional
@@ -145,6 +167,12 @@ public class OrderServiceImpl implements OrderService {
                     Product product = productRepository.findById(productId)
                             .orElseThrow(() -> new RuntimeException("Product not found"));
 
+                    if (product.getQuantity() < d.getQuantity()) {
+                        throw new RuntimeException("Sản phẩm " + product.getProductName() + " không đủ số lượng");
+                    }
+                    product.setQuantity(product.getQuantity() - d.getQuantity());
+                    productRepository.save(product);
+
                     od.setProduct(product);
                     od.setQuantity(d.getQuantity());
                     od.setUnitPrice(d.getUnitPrice());
@@ -162,64 +190,53 @@ public class OrderServiceImpl implements OrderService {
 
 
     @Override
+    @Transactional
     public Order checkoutOrder(Order order) {
         String userId = order.getUserId();
 
         List<Order> userOrders = orderRepository.findByUserIdAndIsOrderFalse(userId);
-
         List<OrderDetail> allDetails = order.getOrderDetails();
 
-        if (allDetails.size() > 1 || userOrders.size() > 1) {
+        if (!userOrders.isEmpty()) {
             for (Order o : userOrders) {
                 orderRepository.delete(o);
             }
-
-            Order newOrder = new Order();
-            newOrder.setUserId(userId);
-            newOrder.setPaymentMethodId(order.getPaymentMethodId());
-            newOrder.setShippingAddress(order.getShippingAddress());
-            newOrder.setCustomerNote(order.getCustomerNote());
-            newOrder.setTotalAmount(order.getTotalAmount());
-            newOrder.setOrderStatus("pending");
-
-            List<OrderDetail> newDetails = allDetails.stream()
-                    .map(od -> {
-                        OrderDetail detail = new OrderDetail();
-                        detail.setProduct(od.getProduct());
-                        detail.setQuantity(od.getQuantity());
-                        detail.setUnitPrice(od.getUnitPrice());
-                        return detail;
-                    }).toList();
-
-            newOrder.setOrderDetails(newDetails);
-
-            return orderRepository.save(newOrder);
-
-        } else if (allDetails.size() == 1 && userOrders.size() <= 1) {
-            Order existingOrder = userOrders.isEmpty() ? new Order() : userOrders.get(0);
-
-            existingOrder.setUserId(userId);
-            existingOrder.setPaymentMethodId(order.getPaymentMethodId());
-            existingOrder.setShippingAddress(order.getShippingAddress());
-            existingOrder.setCustomerNote(order.getCustomerNote());
-            existingOrder.setTotalAmount(order.getTotalAmount());
-            existingOrder.setOrderStatus("pending");
-
-            List<OrderDetail> updatedDetails = allDetails.stream()
-                    .map(od -> {
-                        OrderDetail detail = new OrderDetail();
-                        detail.setProduct(od.getProduct());
-                        detail.setQuantity(od.getQuantity());
-                        detail.setUnitPrice(od.getUnitPrice());
-                        return detail;
-                    }).toList();
-
-            existingOrder.setOrderDetails(updatedDetails);
-
-            return orderRepository.save(existingOrder);
         }
 
-        throw new RuntimeException("Không thể tạo đơn hàng");
+        Order newOrder = new Order();
+        newOrder.setOrderId(generateOrderId());
+        newOrder.setUserId(userId);
+        newOrder.setPaymentMethodId(order.getPaymentMethodId());
+        newOrder.setShippingAddress(order.getShippingAddress());
+        newOrder.setCustomerNote(order.getCustomerNote());
+        newOrder.setTotalAmount(order.getTotalAmount());
+        newOrder.setOrderStatus("pending");
+        newOrder.setOrderDate(LocalDateTime.now());
+
+        List<OrderDetail> newDetails = allDetails.stream()
+                .map(od -> {
+                    OrderDetail detail = new OrderDetail();
+                    Product product = productRepository.findById(od.getProduct().getProductId())
+                            .orElseThrow(() -> new RuntimeException("Product not found"));
+
+                    if (product.getQuantity() < od.getQuantity()) {
+                        throw new RuntimeException("Sản phẩm " + product.getProductName() + " không đủ số lượng");
+                    }
+
+                    product.setQuantity(product.getQuantity() - od.getQuantity());
+                    productRepository.save(product);
+
+                    detail.setProduct(product);
+                    detail.setQuantity(od.getQuantity());
+                    detail.setUnitPrice(od.getUnitPrice());
+                    detail.setOrder(newOrder);
+                    return detail;
+                })
+                .collect(Collectors.toList());
+
+        newOrder.setOrderDetails(newDetails);
+
+        return orderRepository.save(newOrder);
     }
 
 
