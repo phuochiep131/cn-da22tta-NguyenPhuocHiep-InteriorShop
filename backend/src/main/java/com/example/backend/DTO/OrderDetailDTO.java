@@ -1,13 +1,16 @@
 package com.example.backend.DTO;
 
 import com.example.backend.model.OrderDetail;
-import com.example.backend.model.Product;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+@Data
+@NoArgsConstructor
 public class OrderDetailDTO {
     private String orderDetailId;
-    private Product product;
+    private ProductDTO product;  // dùng ProductDTO
     private int quantity;
     private BigDecimal unitPrice;
     private BigDecimal originalUnitPrice;
@@ -15,18 +18,10 @@ public class OrderDetailDTO {
 
     public OrderDetailDTO(OrderDetail detail) {
         this.orderDetailId = detail.getOrderDetailId();
-        this.product = detail.getProduct();
+        this.product = new ProductDTO(detail.getProduct());
         this.quantity = detail.getQuantity();
         this.unitPrice = detail.getUnitPrice();
         this.originalUnitPrice = detail.getOriginalUnitPrice();
         this.subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
     }
-
-    // Getters
-    public String getOrderDetailId() { return orderDetailId; }
-    public Product getProduct() { return product; }
-    public int getQuantity() { return quantity; }
-    public BigDecimal getUnitPrice() { return unitPrice; }
-    public BigDecimal getOriginalUnitPrice() { return originalUnitPrice; }
-    public BigDecimal getSubtotal() { return subtotal; }
 }

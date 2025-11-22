@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import Cookies from "js-cookie";
 import { message } from "antd";
+import { CartContext } from "../../context/CartContext";
 import nothingImg from "../../assets/nothing.png";
 
 export default function Purchase() {
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState("all");
+  const { refreshCartCount } = useContext(CartContext);
 
   const tabs = [
     { key: "all", label: "Tất cả" },
@@ -43,7 +45,8 @@ export default function Purchase() {
         if (!res.ok) throw new Error("Không thể tải danh sách đơn hàng");
 
         const data = await res.json();
-        setOrders(data); // backend đã trả về sẵn list OrderDTO
+        setOrders(data);
+        await refreshCartCount(userId, token);
       } catch (err) {
         message.error(err.message);
       }
@@ -92,7 +95,10 @@ export default function Purchase() {
             className="bg-white rounded-lg shadow-sm border mb-6"
           >
             {/* Header */}
-            <div className="flex items-center justify-end px-5 py-3 border-b bg-[#fafafa]">
+            <div className="flex items-center justify-between px-5 py-3 border-b bg-[#fafafa]">
+              <div className="text-gray-600 text-[14px] font-medium">
+                Mã đơn: <span className="font-bold">{order.orderId}</span>
+              </div>
               <div className="flex items-center gap-2 text-green-600 text-[14px] font-medium">
                 🚚 {statusLabels[order.orderStatus] || "Đang xử lý"}
               </div>

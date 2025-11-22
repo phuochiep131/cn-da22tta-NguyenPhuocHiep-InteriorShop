@@ -8,6 +8,7 @@ import com.example.backend.repository.ProductRepository;
 import com.example.backend.repository.OrderDetailRepository;
 import com.example.backend.service.OrderService;
 import com.example.backend.DTO.OrderDTO;
+import com.example.backend.DTO.OrderReplaceRequest;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +55,27 @@ public class OrderServiceImpl implements OrderService {
             for (OrderDetail detail : order.getOrderDetails()) {
                 Product product = productRepository.findById(detail.getProduct().getProductId())
                         .orElseThrow(() -> new RuntimeException("Product not found"));
+
+                if (!order.getIsOrder()) {
+                    // Kiểm tra sản phẩm đã tồn tại trong giỏ hàng
+                    boolean exists = orderRepository.existsByUserIdAndProductIdAndIsOrderFalse(
+                            order.getUserId(),
+                            product.getProductId()
+                    );
+                    if (exists) {
+                        throw new RuntimeException("Sản phẩm " + product.getProductName() + " đã tồn tại trong giỏ hàng");
+                    }
+                }
+
+                // Chỉ trừ số lượng khi isOrder = true
+                if (order.getIsOrder()) {
+                    if (product.getQuantity() < detail.getQuantity()) {
+                        throw new RuntimeException("Số lượng sản phẩm " + product.getProductName() + " không đủ");
+                    }
+                    product.setQuantity(product.getQuantity() - detail.getQuantity());
+                    productRepository.save(product);
+                }
+
                 detail.setProduct(product);
                 detail.setOrder(order);
             }
@@ -61,6 +83,7 @@ public class OrderServiceImpl implements OrderService {
 
         return orderRepository.save(order);
     }
+
 
     @Override
     @Transactional
@@ -114,6 +137,108 @@ public class OrderServiceImpl implements OrderService {
                 .map(OrderDTO::new)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    @Transactional
+    public Order replaceOrder(OrderReplaceRequest req) {
+        if (req.getOldOrderIds() != null) {
+            for (String oldId : req.getOldOrderIds()) {
+                orderRepository.deleteById(oldId);
+            }
+            orderRepository.flush();
+        }
+
+        Order order = new Order();
+        order.setOrderId(generateOrderId());
+        order.setOrderDate(LocalDateTime.now());
+        order.setOrderStatus("pending");
+        order.setUserId(req.getUserId());
+        order.setPaymentMethodId(req.getPaymentMethodId());
+        order.setShippingAddress(req.getShippingAddress());
+        order.setCustomerNote(req.getCustomerNote());
+        order.setTotalAmount(req.getTotalAmount());
+        order.setIsOrder(true);
+
+        List<OrderDetail> details = req.getOrderDetails().stream()
+                .map(d -> {
+                    OrderDetail od = new OrderDetail(); // ID để Hibernate tự generate
+
+                    String productId = d.getProduct().getProductId();
+                    Product product = productRepository.findById(productId)
+                            .orElseThrow(() -> new RuntimeException("Product not found"));
+
+                    if (product.getQuantity() < d.getQuantity()) {
+                        throw new RuntimeException("Sản phẩm " + product.getProductName() + " không đủ số lượng");
+                    }
+                    product.setQuantity(product.getQuantity() - d.getQuantity());
+                    productRepository.save(product);
+
+                    od.setProduct(product);
+                    od.setQuantity(d.getQuantity());
+                    od.setUnitPrice(d.getUnitPrice());
+                    od.setOriginalUnitPrice(d.getOriginalUnitPrice());
+                    od.setOrder(order);
+
+                    return od;
+                })
+                .collect(Collectors.toList());
+
+        order.setOrderDetails(details);
+
+        return orderRepository.save(order);
+    }
+
+
+    @Override
+    @Transactional
+    public Order checkoutOrder(Order order) {
+        String userId = order.getUserId();
+
+        List<Order> userOrders = orderRepository.findByUserIdAndIsOrderFalse(userId);
+        List<OrderDetail> allDetails = order.getOrderDetails();
+
+        if (!userOrders.isEmpty()) {
+            for (Order o : userOrders) {
+                orderRepository.delete(o);
+            }
+        }
+
+        Order newOrder = new Order();
+        newOrder.setOrderId(generateOrderId());
+        newOrder.setUserId(userId);
+        newOrder.setPaymentMethodId(order.getPaymentMethodId());
+        newOrder.setShippingAddress(order.getShippingAddress());
+        newOrder.setCustomerNote(order.getCustomerNote());
+        newOrder.setTotalAmount(order.getTotalAmount());
+        newOrder.setOrderStatus("pending");
+        newOrder.setOrderDate(LocalDateTime.now());
+
+        List<OrderDetail> newDetails = allDetails.stream()
+                .map(od -> {
+                    OrderDetail detail = new OrderDetail();
+                    Product product = productRepository.findById(od.getProduct().getProductId())
+                            .orElseThrow(() -> new RuntimeException("Product not found"));
+
+                    if (product.getQuantity() < od.getQuantity()) {
+                        throw new RuntimeException("Sản phẩm " + product.getProductName() + " không đủ số lượng");
+                    }
+
+                    product.setQuantity(product.getQuantity() - od.getQuantity());
+                    productRepository.save(product);
+
+                    detail.setProduct(product);
+                    detail.setQuantity(od.getQuantity());
+                    detail.setUnitPrice(od.getUnitPrice());
+                    detail.setOrder(newOrder);
+                    return detail;
+                })
+                .collect(Collectors.toList());
+
+        newOrder.setOrderDetails(newDetails);
+
+        return orderRepository.save(newOrder);
+    }
+
 
     private String generateOrderId() {
         return "OR" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();

@@ -49,9 +49,10 @@ public class OrderDetail {
     }
 
     private String generateOrderDetailId() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
-        return "OD" + LocalDateTime.now().format(formatter);
+        return "OD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"))
+                + "-" + java.util.UUID.randomUUID().toString().substring(0, 8);
     }
+
 
     // Tính subtotal
     public BigDecimal getSubtotal() {
