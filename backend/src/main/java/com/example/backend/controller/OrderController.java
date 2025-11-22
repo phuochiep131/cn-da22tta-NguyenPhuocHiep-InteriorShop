@@ -1,9 +1,9 @@
 package com.example.backend.controller;
 
 import com.example.backend.model.Order;
-import com.example.backend.model.OrderDetail;
 import com.example.backend.service.OrderService;
 import com.example.backend.DTO.OrderDTO;
+import com.example.backend.DTO.OrderReplaceRequest;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,11 +21,33 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+    @PostMapping("/checkout")
+    public ResponseEntity<Order> checkoutOrder(@RequestBody Order order) {
+        try {
+            Order savedOrder = orderService.checkoutOrder(order);
+            return ResponseEntity.ok(savedOrder);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body(null);
+        }
+    }
+
+
     @PostMapping
     public ResponseEntity<Order> createOrder(@RequestBody Order order) {
         Order savedOrder = orderService.createOrder(order);
         return ResponseEntity.ok(savedOrder);
     }
+
+    @PostMapping("/replace")
+    public ResponseEntity<?> replaceOrder(@RequestBody OrderReplaceRequest request) {
+        try {
+            Order newOrder = orderService.replaceOrder(request);
+            return ResponseEntity.ok(new OrderDTO(newOrder));
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        }
+    }
+
 
     @GetMapping
     public ResponseEntity<List<Order>> getAllOrders() {
@@ -45,6 +67,20 @@ public class OrderController {
             return ResponseEntity.ok(order);
         return ResponseEntity.notFound().build();
     }
+
+    @PutMapping("/{orderId}")
+    public ResponseEntity<Order> updateOrder(
+            @PathVariable String orderId,
+            @RequestBody Order updatedOrder
+    ) {
+        try {
+            Order savedOrder = orderService.updateOrder(orderId, updatedOrder);
+            return ResponseEntity.ok(savedOrder);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(null);
+        }
+    }
+
 
     @PutMapping("/{orderId}/status")
     public ResponseEntity<String> updateOrderStatus(@PathVariable String orderId, @RequestBody String status) {

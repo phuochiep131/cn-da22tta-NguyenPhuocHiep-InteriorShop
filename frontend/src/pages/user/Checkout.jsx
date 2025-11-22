@@ -43,15 +43,26 @@ export default function Checkout() {
     address: "",
   });
 
-  // Product info
-  const product = state?.product;
-  const quantity = state?.quantity || 1;
-  const discount = product ? product.discount || 0 : 0;
-  const finalPrice = product ? product.price * (1 - discount / 100) : 0;
-  const totalPrice = finalPrice * quantity;
+  const singleProduct = state?.product;
+  const items = state?.order?.orderDetails || [];
+  const oldOrderIds = state?.oldOrderIds || [];
+  //console.log(items, oldOrderIds);
+
+  const productsToPay = [
+    ...items,
+    ...(singleProduct
+      ? [{ ...singleProduct, quantity: state.quantity || 1 }]
+      : []),
+  ];
+
+  const totalPrice = productsToPay.reduce(
+    (sum, item) =>
+      sum +
+      (item.subtotal || (item.product?.price || item.price) * item.quantity),
+    0
+  );
   const totalPriceWithCoupon = Math.max(totalPrice - couponValue, 0);
 
-  // Fetch payment methods
   useEffect(() => {
     fetch("http://localhost:8080/api/payment-methods", {
       headers: { Authorization: `Bearer ${token}` },
@@ -61,7 +72,6 @@ export default function Checkout() {
       .catch(() => messageApi.error("Không thể tải phương thức thanh toán"));
   }, [token]);
 
-  // Fetch coupons
   useEffect(() => {
     fetch("http://localhost:8080/api/coupons", {
       headers: { Authorization: `Bearer ${token}` },
@@ -71,7 +81,6 @@ export default function Checkout() {
       .catch(() => messageApi.error("Không thể tải danh sách voucher"));
   }, []);
 
-  // Coupon selection
   const handleSelectCoupon = (couponId) => {
     const selected = coupons.find((c) => c.couponId === couponId);
     if (!selected) {
@@ -88,57 +97,81 @@ export default function Checkout() {
     setCouponValue(discountAmount);
   };
 
-  // Confirm order
   const handleConfirmOrder = async () => {
     const selectedAddress = addresses.find((a) => a.id === selectedAddressId);
     if (!selectedAddress)
       return messageApi.warning("Vui lòng chọn địa chỉ nhận hàng!");
-    if (!product) return messageApi.warning("Không có sản phẩm để thanh toán!");
-    console.log("product", product);
-
+    if (!productsToPay.length)
+      return messageApi.warning("Không có sản phẩm để thanh toán!");
 
     const orderPayload = {
       userId: Cookies.get("user_id"),
       paymentMethodId: paymentMethod,
       shippingAddress: `${selectedAddress.name} - ${selectedAddress.phone} - ${selectedAddress.address}`,
       customerNote: note,
+      orderDate: new Date().toISOString(),
       couponId: selectedCouponId ? parseInt(selectedCouponId) : null,
       totalAmount: totalPriceWithCoupon,
       isOrder: true,
       orderStatus: "pending",
-      orderDetails: [
-        {
-          product: { productId: product.productId },
-          quantity,
-          unitPrice: finalPrice,
-          originalUnitPrice: product.price,
-        },
-      ],
+      orderDetails: productsToPay.map((item) => ({
+        product: { productId: item.product?.productId || item.productId },
+        quantity: item.quantity || 1,
+        unitPrice: item.unitPrice || item.product?.price || item.price,
+        originalUnitPrice:
+          item.originalUnitPrice || item.product?.price || item.price,
+      })),
+      oldOrderIds,
     };
 
-    try {
-      const res = await fetch("http://localhost:8080/api/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(orderPayload),
-      });
+    //console.log(orderPayload);
 
-      if (!res.ok) {
-        let errorMessage = "Đặt hàng thất bại";
-        try {
-          const errData = await res.json();
-          errorMessage = errData.message || errorMessage;
-        } catch {
-          //
-        }
-        throw new Error(errorMessage);
+    try {
+      let res;
+
+      if (items.length === 1 && state?.order) {
+        const existingOrderId = state.order.orderId;
+        res = await fetch(
+          `http://localhost:8080/api/orders/${existingOrderId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(orderPayload),
+          }
+        );
+      } else if (oldOrderIds?.length) {
+        res = await fetch("http://localhost:8080/api/orders/replace", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(orderPayload),
+        });
+      } else {
+        res = await fetch("http://localhost:8080/api/orders", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(orderPayload),
+        });
       }
 
-      messageApi.success("Đặt hàng thành công!");
-      navigate("/purchase");
+      if (!res.ok) throw new Error("Đặt hàng thất bại");
+
+      if (paymentMethod === "PM001") {
+        messageApi.success("Đặt hàng thành công!");
+        setTimeout(() => {
+          navigate("/purchase");
+        }, 2000);
+      } else {        
+        navigate("/order");
+      }
     } catch (err) {
       console.error(err);
       messageApi.error(
@@ -147,7 +180,6 @@ export default function Checkout() {
     }
   };
 
-  // Address modal handlers
   const openAddModal = () => {
     setEditingAddress(null);
     setModalData({ name: "", phone: "", address: "" });
@@ -183,12 +215,13 @@ export default function Checkout() {
       setSelectedAddressId(addresses[0].id);
   };
 
-  if (!product)
+  if (!productsToPay.length) {
     return (
       <p className="text-center py-10 text-gray-500">
         Không có sản phẩm để thanh toán.
       </p>
     );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
@@ -247,35 +280,45 @@ export default function Checkout() {
         </div>
       </div>
 
-      {/* Sản phẩm */}
+      {/* Danh sách sản phẩm */}
       <div className="bg-white shadow-sm mb-4 p-5">
         <h3 className="font-semibold mb-3 text-lg flex items-center gap-2">
           <SquareChartGantt className="w-5 h-5" /> Sản phẩm
         </h3>
-        <div className="grid grid-cols-12 p-4 border-b font-semibold text-gray-600 text-sm">
-          <div className="col-span-6">Sản phẩm</div>
-          <div className="col-span-2 text-center">Đơn giá</div>
-          <div className="col-span-2 text-center">Số lượng</div>
-          <div className="col-span-2 text-right">Thành tiền</div>
-        </div>
-        <div className="grid grid-cols-12 p-4 border-b text-sm text-gray-700">
-          <div className="col-span-6 flex gap-3 items-center text-base">
-            <img
-              src={product.imageUrl}
-              className="w-16 h-16 rounded object-cover"
-            />
-            <span>{product.productName}</span>
+
+        {productsToPay.map((item, index) => (
+          <div
+            key={item.orderDetailId || index}
+            className="grid grid-cols-12 p-4 border-b text-sm text-gray-700"
+          >
+            <div className="col-span-6 flex gap-3 items-center text-base">
+              <img
+                src={item.product?.imageUrl || item.imageUrl}
+                className="w-16 h-16 rounded object-cover"
+              />
+              <span>{item.product?.productName || item.productName}</span>
+            </div>
+            <div className="col-span-2 text-center">
+              {(
+                item.unitPrice ||
+                item.product?.price ||
+                item.price
+              ).toLocaleString()}
+              ₫
+            </div>
+            <div className="col-span-2 text-center text-red-600 font-semibold">
+              {item.quantity}
+            </div>
+            <div className="col-span-2 text-right font-bold text-base">
+              {(
+                item.subtotal ||
+                (item.unitPrice || item.product?.price || item.price) *
+                  item.quantity
+              ).toLocaleString()}{" "}
+              ₫
+            </div>
           </div>
-          <div className="col-span-2 text-center">
-            {product.price.toLocaleString("vi-VN")}₫
-          </div>
-          <div className="col-span-2 text-center text-red-600 font-semibold">
-            {quantity}
-          </div>
-          <div className="col-span-2 text-right font-bold text-base">
-            {(finalPrice * quantity).toLocaleString("vi-VN")} ₫
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Ghi chú */}
@@ -348,7 +391,7 @@ export default function Checkout() {
         <div className="text-gray-700 mb-3 text-base">
           Tổng thanh toán:
           <span className="text-red-600 font-bold text-2xl ml-2">
-            {totalPriceWithCoupon.toLocaleString("vi-VN")} ₫
+            {totalPriceWithCoupon.toLocaleString()} ₫
           </span>
         </div>
         <button
@@ -357,7 +400,7 @@ export default function Checkout() {
         >
           Xác nhận đặt hàng
         </button>
-      </div>
+      </div>      
 
       {/* Modal địa chỉ */}
       <Modal
