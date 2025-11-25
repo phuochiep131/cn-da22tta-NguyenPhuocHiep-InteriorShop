@@ -34,7 +34,8 @@ public class VnPayController {
     }
 
     @GetMapping("/return")
-    public String vnpayReturn(HttpServletRequest req) {
+    public Map<String, Object> vnpayReturn(HttpServletRequest req) {
         return vnPayService.processReturn(req);
     }
+
 }

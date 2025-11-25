@@ -9,7 +9,7 @@ public class VnPayConfig {
     @Value("${vnpay.url:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
     private String payUrl;
 
-    @Value("${vnpay.returnUrl:http://localhost:8080/api/vnpay/return}")
+    @Value("${vnpay.returnUrl:http://localhost:5173/payment-return}")
     private String returnUrl;
 
     @Value("${vnpay.tmnCode:}")
