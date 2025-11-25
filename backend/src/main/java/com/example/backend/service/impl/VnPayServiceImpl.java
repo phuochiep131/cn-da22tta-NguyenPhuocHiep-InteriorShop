@@ -29,7 +29,7 @@ public class VnPayServiceImpl implements VnPayService {
         params.put("vnp_Version", vnp_Version);
         params.put("vnp_Command", vnp_Command);
         params.put("vnp_TmnCode", vnp_TmnCode);
-        params.put("vnp_Amount", String.valueOf(amount * 100));
+        params.put("vnp_Amount", String.valueOf(amount * 100)); // gửi nguyên số tiền *100
         params.put("vnp_CurrCode", "VND");
         params.put("vnp_TxnRef", vnp_TxnRef);
         params.put("vnp_OrderInfo", "Thanh toán đơn hàng " + vnp_TxnRef);
@@ -59,67 +59,56 @@ public class VnPayServiceImpl implements VnPayService {
     }
 
     @Override
-    public String processReturn(HttpServletRequest req) {
+    public Map<String, Object> processReturn(HttpServletRequest req) {
+        Map<String, Object> result = new HashMap<>();
         try {
-            // 1️⃣ Lấy query string nguyên bản
-            String queryString = req.getQueryString(); // ví dụ: vnp_Amount=1000000&vnp_BankCode=NCB&...
-            if (queryString == null) return "Invalid request";
+            String queryString = req.getQueryString();
+            if (queryString == null || queryString.isEmpty()) {
+                result.put("success", false);
+                result.put("message", "Invalid request");
+                return result;
+            }
 
-            // 2️⃣ Tách params ra Map
-            Map<String, String> params = new HashMap<>();
+            Map<String, String> fields = new HashMap<>();
             String vnp_SecureHash = null;
-
-            for (String param : queryString.split("&")) {
-                String[] pair = param.split("=", 2);
-                String key = pair[0];
-                String value = pair.length > 1 ? pair[1] : "";
-                if ("vnp_SecureHash".equals(key)) {
-                    vnp_SecureHash = value;
-                } else {
-                    params.put(key, value);
-                }
+            for (String part : queryString.split("&")) {
+                String[] kv = part.split("=", 2);
+                if (kv[0].equals("vnp_SecureHash")) vnp_SecureHash = kv[1];
+                else fields.put(kv[0], kv.length > 1 ? kv[1] : "");
             }
 
-            // 3️⃣ Sắp xếp alphabet
-            Map<String, String> sortedFields = new TreeMap<>(params);
-
-            // 4️⃣ Build hash string (giữ nguyên URL-encoded)
+            Map<String, String> sorted = new TreeMap<>(fields);
             StringBuilder hashData = new StringBuilder();
-            Iterator<Map.Entry<String, String>> itr = sortedFields.entrySet().iterator();
-            while (itr.hasNext()) {
-                Map.Entry<String, String> e = itr.next();
-                hashData.append(e.getKey());
-                hashData.append('=');
-                hashData.append(e.getValue());
-                if (itr.hasNext()) {
-                    hashData.append('&');
-                }
+            Iterator<Map.Entry<String, String>> it = sorted.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry<String, String> e = it.next();
+                hashData.append(e.getKey()).append("=").append(e.getValue());
+                if (it.hasNext()) hashData.append("&");
             }
 
-            // 5️⃣ Tính HMAC SHA512
-            String expectedHash = VnPayUtil.hmacSHA512(vnPayConfig.getHashSecret(), hashData.toString());
-
-            // 6️⃣ So sánh
-            if (!expectedHash.equals(vnp_SecureHash)) {
-                return "Invalid signature";
+            String calculatedHash = VnPayUtil.hmacSHA512(vnPayConfig.getHashSecret(), hashData.toString());
+            if (!calculatedHash.equalsIgnoreCase(vnp_SecureHash)) {
+                result.put("success", false);
+                result.put("message", "Invalid signature");
+                return result;
             }
 
-            // 7️⃣ Kiểm tra kết quả
-            String responseCode = sortedFields.get("vnp_ResponseCode");
-            String transactionStatus = sortedFields.get("vnp_TransactionStatus");
-            String txnRef = sortedFields.get("vnp_TxnRef");
-            String amount = sortedFields.get("vnp_Amount");
+            String vnp_ResponseCode = sorted.get("vnp_ResponseCode");
+            String vnp_TransactionStatus = sorted.get("vnp_TransactionStatus");
+            String vnp_TxnRef = sorted.get("vnp_TxnRef");
+            String vnp_Amount = sorted.get("vnp_Amount");
 
-            if ("00".equals(responseCode) && "00".equals(transactionStatus)) {
-                return "Thanh toán thành công. Mã đơn hàng: " + txnRef + ", Số tiền: " + amount;
-            } else {
-                return "Thanh toán thất bại. Mã đơn hàng: " + txnRef;
-            }
-
+            boolean success = "00".equals(vnp_ResponseCode) && "00".equals(vnp_TransactionStatus);
+            result.put("success", success);
+            result.put("txnRef", vnp_TxnRef);
+            result.put("amount", Long.parseLong(vnp_Amount) / 100); // hiển thị đúng VND
+            result.put("message", success ? "Thanh toán thành công!" : "Thanh toán thất bại!");
+            return result;
         } catch (Exception e) {
-            e.printStackTrace();
-            return "Lỗi xử lý thanh toán: " + e.getMessage();
+            result.put("success", false);
+            result.put("message", "Lỗi xử lý thanh toán: " + e.getMessage());
+            return result;
         }
     }
-
 }
+

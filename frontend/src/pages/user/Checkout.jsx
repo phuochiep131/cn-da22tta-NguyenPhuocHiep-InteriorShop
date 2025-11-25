@@ -43,15 +43,39 @@ export default function Checkout() {
     address: "",
   });
 
-  const singleProduct = state?.product;
-  const items = state?.order?.orderDetails || [];
-  const oldOrderIds = state?.oldOrderIds || [];
-  //console.log(items, oldOrderIds);
+  // 🔥 NEW: dữ liệu order từ sessionStorage
+  const [singleProduct, setSingleProduct] = useState(state?.product || null);
+  const [items, setItems] = useState(state?.order?.orderDetails || []);
+  const [oldOrderIds, setOldOrderIds] = useState(state?.oldOrderIds || []);
+
+  useEffect(() => {
+    // 🔥 NEW: nếu quay lại từ PaymentReturn thất bại
+    if ((!state || !state.product) && !singleProduct) {
+      const pendingOrder = sessionStorage.getItem("pendingOrder");
+      if (pendingOrder) {
+        const {
+          singleProduct: sp,
+          items: it,
+          oldOrderIds: oldIds,
+          note: n,
+          paymentMethod: pm,
+          couponId: cid,
+        } = JSON.parse(pendingOrder);
+
+        setSingleProduct(sp || null);
+        setItems(it || []);
+        setOldOrderIds(oldIds || []);
+        setNote(n || "");
+        setPaymentMethod(pm || "PM001");
+        setSelectedCouponId(cid || null);
+      }
+    }
+  }, []);
 
   const productsToPay = [
     ...items,
     ...(singleProduct
-      ? [{ ...singleProduct, quantity: state.quantity || 1 }]
+      ? [{ ...singleProduct, quantity: state?.quantity || 1 }]
       : []),
   ];
 
@@ -61,8 +85,10 @@ export default function Checkout() {
       (item.subtotal || (item.product?.price || item.price) * item.quantity),
     0
   );
+
   const totalPriceWithCoupon = Math.max(totalPrice - couponValue, 0);
 
+  // Load payment methods
   useEffect(() => {
     fetch("http://localhost:8080/api/payment-methods", {
       headers: { Authorization: `Bearer ${token}` },
@@ -72,6 +98,7 @@ export default function Checkout() {
       .catch(() => messageApi.error("Không thể tải phương thức thanh toán"));
   }, [token]);
 
+  // Load coupons
   useEffect(() => {
     fetch("http://localhost:8080/api/coupons", {
       headers: { Authorization: `Bearer ${token}` },
@@ -124,8 +151,55 @@ export default function Checkout() {
       oldOrderIds,
     };
 
-    //console.log(orderPayload);
+    // 🔥 Nếu user chọn thanh toán VNPay
+    if (paymentMethod === "PM002") {
+      try {
+        const vnpRes = await fetch(
+          "http://localhost:8080/api/vnpay/create-payment",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              amount: totalPriceWithCoupon,
+              language: "vn",
+            }),
+          }
+        );
 
+        if (!vnpRes.ok) {
+          return messageApi.error("Không thể kết nối VNPAY");
+        }
+
+        const vnpData = await vnpRes.json();
+
+        if (vnpData.code === "00") {
+          // 🔥 NEW: lưu order tạm thời trước khi redirect sang VNPAY
+          sessionStorage.setItem(
+            "pendingOrder",
+            JSON.stringify({
+              singleProduct,
+              items,
+              oldOrderIds,
+              note,
+              paymentMethod,
+              couponId: selectedCouponId,
+            })
+          );
+          window.location.href = vnpData.data;
+          return; // dừng hoàn toàn
+        } else {
+          return messageApi.error("Không tạo được liên kết thanh toán VNPAY!");
+        }
+      } catch (err) {
+        console.error(err);
+        return messageApi.error("Lỗi khi gọi VNPAY!");
+      }
+    }
+
+    // Thanh toán thông thường
     try {
       let res;
 
@@ -169,7 +243,7 @@ export default function Checkout() {
         setTimeout(() => {
           navigate("/purchase");
         }, 2000);
-      } else {        
+      } else {
         navigate("/order");
       }
     } catch (err) {
@@ -180,6 +254,7 @@ export default function Checkout() {
     }
   };
 
+  // -------------------- Địa chỉ --------------------
   const openAddModal = () => {
     setEditingAddress(null);
     setModalData({ name: "", phone: "", address: "" });
@@ -400,7 +475,7 @@ export default function Checkout() {
         >
           Xác nhận đặt hàng
         </button>
-      </div>      
+      </div>
 
       {/* Modal địa chỉ */}
       <Modal
