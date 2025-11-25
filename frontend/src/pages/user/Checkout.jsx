@@ -176,7 +176,6 @@ export default function Checkout() {
         const vnpData = await vnpRes.json();
 
         if (vnpData.code === "00") {
-          // 🔥 NEW: lưu order tạm thời trước khi redirect sang VNPAY
           sessionStorage.setItem(
             "pendingOrder",
             JSON.stringify({
@@ -185,6 +184,7 @@ export default function Checkout() {
               oldOrderIds,
               note,
               paymentMethod,
+              shippingAddress: `${selectedAddress.name} - ${selectedAddress.phone} - ${selectedAddress.address}`,
               couponId: selectedCouponId,
             })
           );
