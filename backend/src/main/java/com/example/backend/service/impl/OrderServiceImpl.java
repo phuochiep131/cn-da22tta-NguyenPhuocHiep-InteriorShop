@@ -57,7 +57,6 @@ public class OrderServiceImpl implements OrderService {
                         .orElseThrow(() -> new RuntimeException("Product not found"));
 
                 if (!order.getIsOrder()) {
-                    // Kiểm tra sản phẩm đã tồn tại trong giỏ hàng
                     boolean exists = orderRepository.existsByUserIdAndProductIdAndIsOrderFalse(
                             order.getUserId(),
                             product.getProductId()
@@ -67,7 +66,6 @@ public class OrderServiceImpl implements OrderService {
                     }
                 }
 
-                // Chỉ trừ số lượng khi isOrder = true
                 if (order.getIsOrder()) {
                     if (product.getQuantity() < detail.getQuantity()) {
                         throw new RuntimeException("Số lượng sản phẩm " + product.getProductName() + " không đủ");

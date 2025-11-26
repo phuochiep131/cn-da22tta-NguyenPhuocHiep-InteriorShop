@@ -29,11 +29,17 @@ export default function OrderManager() {
   const { user } = useContext(AuthContext);
 
   const statusOptions = [
-    { value: "pending", label: "Chờ xác nhận" },
-    { value: "processing", label: "Vận chuyển" },
-    { value: "shipping", label: "Chờ giao hàng" },
-    { value: "delivered", label: "Đã giao" },
-    { value: "cancelled", label: "Đã hủy" },
+    { value: "pending", label: "Chờ xác nhận", color: "#faad14" },
+    { value: "processing", label: "Vận chuyển", color: "#1890ff" },
+    { value: "shipping", label: "Chờ giao hàng", color: "#2db7f5" },
+    { value: "delivered", label: "Đã giao", color: "#52c41a" },
+    { value: "cancelled", label: "Đã hủy", color: "#f5222d" },
+  ];
+
+  const paymentStatusOptions = [
+    { value: "Pending", label: "Đang chờ", color: "#faad14" },
+    { value: "Completed", label: "Đã thanh toán", color: "#52c41a" },
+    { value: "Failed", label: "Thất bại", color: "#f5222d" },
   ];
 
   useEffect(() => {
@@ -105,6 +111,42 @@ export default function OrderManager() {
     }
   };
 
+  const updatePaymentStatus = async (paymentId, newStatus) => {
+    const token = Cookies.get("jwt");
+
+    try {
+      const res = await fetch(
+        `http://localhost:8080/api/payments/${paymentId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ paymentStatus: newStatus }),
+        }
+      );
+
+      if (!res.ok) throw new Error();
+
+      message.success("Cập nhật trạng thái thanh toán thành công!");
+
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.payment?.paymentId === paymentId
+            ? {
+                ...order,
+                payment: { ...order.payment, paymentStatus: newStatus },
+              }
+            : order
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      message.error("Không thể cập nhật trạng thái thanh toán!");
+    }
+  };
+
   const columns = [
     {
       title: "Mã đơn hàng",
@@ -152,7 +194,7 @@ export default function OrderManager() {
       render: (v) => v.toLocaleString() + " ₫",
     },
     {
-      title: "Trạng thái",
+      title: "Trạng thái đặt hàng",
       dataIndex: "orderStatus",
       render: (s, record) => {
         let statusValue;
@@ -168,10 +210,31 @@ export default function OrderManager() {
             value={statusValue}
             onChange={(val) => updateStatus(record.orderId, val)}
             style={{ width: 150 }}
-            options={statusOptions}
+            options={statusOptions.map((s) => ({
+              value: s.value,
+              label: <span style={{ color: s.color }}>{s.label}</span>,
+            }))}
           />
         );
       },
+    },
+    {
+      title: "Trạng thái thanh toán",
+      dataIndex: "payment",
+      render: (payment) =>
+        payment ? (
+          <Select
+            value={payment.paymentStatus}
+            style={{ width: 150 }}
+            options={paymentStatusOptions.map((p) => ({
+              value: p.value,
+              label: <span style={{ color: p.color }}>{p.label}</span>,
+            }))}
+            onChange={(val) => updatePaymentStatus(payment.paymentId, val)}
+          />
+        ) : (
+          "—"
+        ),
     },
     {
       title: "Ngày tạo đơn",
@@ -266,7 +329,10 @@ export default function OrderManager() {
             <Select
               value={detailOrder.orderStatus}
               style={{ width: 200 }}
-              options={statusOptions}
+              options={statusOptions.map((s) => ({
+                value: s.value,
+                label: <span style={{ color: s.color }}>{s.label}</span>,
+              }))}
               onChange={(val) =>
                 setDetailOrder({ ...detailOrder, orderStatus: val })
               }
@@ -276,6 +342,36 @@ export default function OrderManager() {
               className="ml-3"
               onClick={() =>
                 updateStatus(detailOrder.orderId, detailOrder.orderStatus)
+              }
+            >
+              Lưu
+            </Button>
+
+            <h3 className="mt-4 mb-2 font-semibold">
+              Cập nhật trạng thái thanh toán
+            </h3>
+            <Select
+              value={detailOrder.payment?.paymentStatus || "Pending"}
+              style={{ width: 200 }}
+              options={paymentStatusOptions.map((p) => ({
+                value: p.value,
+                label: <span style={{ color: p.color }}>{p.label}</span>,
+              }))}
+              onChange={(val) =>
+                setDetailOrder({
+                  ...detailOrder,
+                  payment: { ...detailOrder.payment, paymentStatus: val },
+                })
+              }
+            />
+            <Button
+              type="primary"
+              className="ml-3"
+              onClick={() =>
+                updatePaymentStatus(
+                  detailOrder.payment.paymentId,
+                  detailOrder.payment.paymentStatus
+                )
               }
             >
               Lưu

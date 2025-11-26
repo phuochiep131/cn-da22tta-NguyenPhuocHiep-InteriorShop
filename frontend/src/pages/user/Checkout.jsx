@@ -43,13 +43,11 @@ export default function Checkout() {
     address: "",
   });
 
-  // 🔥 NEW: dữ liệu order từ sessionStorage
   const [singleProduct, setSingleProduct] = useState(state?.product || null);
   const [items, setItems] = useState(state?.order?.orderDetails || []);
   const [oldOrderIds, setOldOrderIds] = useState(state?.oldOrderIds || []);
 
   useEffect(() => {
-    // 🔥 NEW: nếu quay lại từ PaymentReturn thất bại
     if ((!state || !state.product) && !singleProduct) {
       const pendingOrder = sessionStorage.getItem("pendingOrder");
       if (pendingOrder) {
@@ -88,7 +86,6 @@ export default function Checkout() {
 
   const totalPriceWithCoupon = Math.max(totalPrice - couponValue, 0);
 
-  // Load payment methods
   useEffect(() => {
     fetch("http://localhost:8080/api/payment-methods", {
       headers: { Authorization: `Bearer ${token}` },
@@ -98,7 +95,6 @@ export default function Checkout() {
       .catch(() => messageApi.error("Không thể tải phương thức thanh toán"));
   }, [token]);
 
-  // Load coupons
   useEffect(() => {
     fetch("http://localhost:8080/api/coupons", {
       headers: { Authorization: `Bearer ${token}` },
@@ -151,7 +147,6 @@ export default function Checkout() {
       oldOrderIds,
     };
 
-    // 🔥 Nếu user chọn thanh toán VNPay
     if (paymentMethod === "PM002") {
       try {
         const vnpRes = await fetch(
@@ -189,7 +184,7 @@ export default function Checkout() {
             })
           );
           window.location.href = vnpData.data;
-          return; // dừng hoàn toàn
+          return;
         } else {
           return messageApi.error("Không tạo được liên kết thanh toán VNPAY!");
         }
@@ -199,7 +194,15 @@ export default function Checkout() {
       }
     }
 
-    // Thanh toán thông thường
+    const generateTransactionId = () => {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let rand = "";
+      for (let i = 0; i < 10; i++) {
+        rand += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return "TM" + rand;
+    };
+
     try {
       let res;
 
@@ -216,7 +219,8 @@ export default function Checkout() {
             body: JSON.stringify(orderPayload),
           }
         );
-      } else if (oldOrderIds?.length) {
+      }
+      else if (oldOrderIds?.length) {
         res = await fetch("http://localhost:8080/api/orders/replace", {
           method: "POST",
           headers: {
@@ -225,7 +229,8 @@ export default function Checkout() {
           },
           body: JSON.stringify(orderPayload),
         });
-      } else {
+      }
+      else {
         res = await fetch("http://localhost:8080/api/orders", {
           method: "POST",
           headers: {
@@ -238,14 +243,43 @@ export default function Checkout() {
 
       if (!res.ok) throw new Error("Đặt hàng thất bại");
 
+      const orderData = await res.json();
+      const createdOrderId = orderData.orderId;
+
       if (paymentMethod === "PM001") {
+        const transactionId = generateTransactionId();
+
+        const paymentPayload = {
+          orderId: createdOrderId,
+          paymentMethodId: paymentMethod,
+          transactionId: transactionId,
+          amount: totalPriceWithCoupon,
+          paymentStatus: "Pending",
+        };
+
+        const payRes = await fetch("http://localhost:8080/api/payments", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(paymentPayload),
+        });
+
+        if (!payRes.ok) {
+          console.error("Tạo thanh toán thất bại");
+          messageApi.error("Không thể tạo thanh toán!");
+        }
+
         messageApi.success("Đặt hàng thành công!");
         setTimeout(() => {
           navigate("/purchase");
         }, 2000);
-      } else {
-        navigate("/order");
+
+        return;
       }
+
+      navigate("/order");
     } catch (err) {
       console.error(err);
       messageApi.error(
