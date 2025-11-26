@@ -45,7 +45,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyRole("USER", "ADMIN")
 
-
                 .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
 
                 .requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN")
@@ -63,6 +62,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/coupons/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/coupons/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/coupons/**").hasRole("ADMIN")
+
+                .requestMatchers(HttpMethod.PUT, "/api/payments/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/payments/**").hasRole("ADMIN")
+
+                .requestMatchers(HttpMethod.PUT, "/api/payments/*/status").hasRole("ADMIN")
 
                 .requestMatchers("/api/users/profile").authenticated()
 

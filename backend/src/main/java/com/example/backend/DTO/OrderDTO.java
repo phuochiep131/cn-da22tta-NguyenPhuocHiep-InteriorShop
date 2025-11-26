@@ -2,13 +2,13 @@ package com.example.backend.DTO;
 
 import com.example.backend.model.Order;
 import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
 public class OrderDTO {
+
     private String orderId;
     private String userId;
     private String paymentMethodId;
@@ -21,6 +21,8 @@ public class OrderDTO {
     private Boolean isOrder;
     private List<String> oldOrderIds;
     private List<OrderDetailDTO> orderDetails;
+
+    private PaymentDTO payment;
 
     public OrderDTO() {}
 
@@ -35,8 +37,20 @@ public class OrderDTO {
         this.couponId = order.getCouponId();
         this.totalAmount = order.getTotalAmount();
         this.isOrder = order.getIsOrder();
+
         this.orderDetails = order.getOrderDetails().stream()
                 .map(OrderDetailDTO::new)
                 .toList();
+
+        if (order.getPayment() != null) {
+            this.payment = PaymentDTO.builder()
+                    .paymentId(order.getPayment().getPaymentId())
+                    .orderId(order.getOrderId())
+                    .paymentMethodId(order.getPayment().getPaymentMethodId())
+                    .transactionId(order.getPayment().getTransactionId())
+                    .amount(order.getPayment().getAmount())
+                    .paymentStatus(order.getPayment().getPaymentStatus().name())
+                    .build();
+        }
     }
 }
