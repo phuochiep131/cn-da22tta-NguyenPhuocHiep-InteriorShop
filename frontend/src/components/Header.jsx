@@ -1,150 +1,215 @@
-import { useState, useEffect, useRef, useContext } from "react";
-import { Menu, X, ShoppingCart, User, Lock, LogOut, Shield } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useContext, useRef, useEffect } from "react";
+import {
+  ShoppingCart,
+  User,
+  Search,
+  LogOut,
+  Shield,
+  UserCircle,
+  Settings,
+} from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom"; // Import useSearchParams
 import { AuthContext } from "../context/AuthContext";
+import { CartContext } from "../context/CartContext";
 import MainMenu from "./MainMenu";
 import { message } from "antd";
 import Cookies from "js-cookie";
-import { CartContext } from "../context/CartContext";
 
 export default function Header() {
-  const [isOpen, setIsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { cartCount, refreshCartCount, resetCartCount } = useContext(CartContext);
-  const menuRef = useRef(null);
+  const { cartCount, refreshCartCount, resetCartCount } =
+    useContext(CartContext);
+  const { user, logout } = useContext(AuthContext);
+
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams(); // Hook để lấy param từ URL
+  const [keyword, setKeyword] = useState(searchParams.get("search") || ""); // Init state từ URL nếu có
+
+  const menuRef = useRef(null);
   const [messageApi, contextHolder] = message.useMessage();
 
-  const { user, logout } = useContext(AuthContext);
   const isLoggedIn = !!user;
 
-  const userId = Cookies.get("user_id");
-  const token = Cookies.get("jwt");
-
+  // Sync input với URL khi URL thay đổi (trường hợp user back/forward)
+  useEffect(() => {
+    setKeyword(searchParams.get("search") || "");
+  }, [searchParams]);
 
   useEffect(() => {
-    if (user) refreshCartCount(userId, token);
-  }, [user, token]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+    if (user) refreshCartCount(Cookies.get("user_id"), Cookies.get("jwt"));
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target))
         setShowUserMenu(false);
-      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleProfile = () => {
-    navigate("/edit-profile");
-    setShowUserMenu(false);
-  };
-
-  const handleChangePassword = () => {
-    navigate("/change-password");
-    setShowUserMenu(false);
-  };
+  }, [user]);
 
   const handleLogout = () => {
     logout();
-    messageApi.success("Đăng xuất thành công!");
     resetCartCount();
-
     setShowUserMenu(false);
+    messageApi.success("Đăng xuất thành công");
     navigate("/");
   };
 
-  return (
-    <header className="bg-white border-b border-gray-200 fixed top-0 w-full z-50">
-      {contextHolder}
-      <div className="px-4 py-3 flex items-center justify-between">
-        {/* Logo */}
-        <div className="text-xl md:text-2xl font-bold text-gray-900 pl-[10%]">Logo</div>
+  // --- XỬ LÝ TÌM KIẾM ---
+  const handleSearch = () => {
+    if (keyword.trim()) {
+      // Chuyển hướng sang trang chứa component Products kèm query param
+      // LƯU Ý: Thay '/products' bằng đường dẫn thực tế chứa danh sách sản phẩm của bạn (ví dụ: '/' nếu là trang chủ)
+      navigate(`/products?search=${encodeURIComponent(keyword.trim())}`);
+    } else {
+      // Nếu xóa trắng ô tìm kiếm thì quay về trang sản phẩm gốc
+      navigate(`/products`);
+    }
+  };
 
-        {/* Cart + User */}
-        <div className="hidden md:flex space-x-3 items-center relative">
-          <div className="relative">
-            <button 
-            onClick={() => navigate("/cart")}
-            className="text-gray-800 p-2 rounded-md hover:bg-gray-900 hover:text-white transition relative">
-              <ShoppingCart size={22} />
-              <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs font-semibold rounded-full px-[6px] py-[1px]">
-                {cartCount}
-              </span>
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+  // ---------------------
+
+  return (
+    <header className="bg-white border-b border-gray-200 fixed top-0 w-full z-50 shadow-sm transition-all">
+      {contextHolder}
+
+      {/* TẦNG 1: LOGO - SEARCH - ACTIONS */}
+      <div className="border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-4">
+          {/* Logo */}
+          <Link
+            to="/"
+            className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tighter shrink-0"
+          >
+            NPH <span className="text-blue-600">STORE</span>
+          </Link>
+
+          {/* Search Bar (ĐÃ CẬP NHẬT) */}
+          <div className="hidden md:flex flex-1 max-w-lg mx-auto relative">
+            <input
+              type="text"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Tìm kiếm ghế sofa, bàn ăn..."
+              className="w-full pl-10 pr-12 py-2.5 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all text-sm"
+            />
+            <button
+              onClick={handleSearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+            >
+              <Search size={18} />
             </button>
+            <Search
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+              size={18}
+            />
           </div>
 
-          {!isLoggedIn ? (
-            <div className="flex space-x-2">
-              <Link to="/register" className="text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition flex items-center gap-1">
-                <User size={18} /> Đăng ký
-              </Link>
-              <Link to="/login" className="text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-blue-600 hover:text-white transition flex items-center gap-1 border border-blue-600">
-                <User size={18} /> Đăng nhập
-              </Link>
-            </div>
-          ) : (
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 text-gray-800 px-3 py-2 rounded-md text-sm hover:bg-gray-900 hover:text-white transition"
-              >
-                <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-100">
-                  {user.avatar ? <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" /> : <User size={20} className="text-gray-500" />}
-                </div>
-                <span>{user.fullName || user.email}</span>
-              </button>
+          {/* Actions: Cart & User (GIỮ NGUYÊN) */}
+          <div className="flex items-center gap-3 sm:gap-5 shrink-0">
+            {/* ... (Phần Cart và User giữ nguyên như code cũ) ... */}
+            <button
+              onClick={() => navigate("/cart")}
+              className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-full transition group"
+            >
+              <ShoppingCart
+                size={24}
+                className="group-hover:text-blue-600 transition"
+              />
+              <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-white">
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            </button>
 
-              {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                  <div className="px-4 py-2 border-b text-sm text-gray-700">
-                    <div className="font-medium">{user.fullName || user.email}</div>
-                    <div className="flex items-center text-xs text-gray-500 mt-1">
-                      <Shield size={14} className="mr-1" />
-                      {user.role || "USER"}
+            {!isLoggedIn ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="hidden sm:block text-sm font-semibold text-gray-700 hover:text-blue-600 px-2"
+                >
+                  Đăng nhập
+                </Link>
+                <Link
+                  to="/register"
+                  className="bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-full hover:bg-blue-700 transition shadow-sm"
+                >
+                  Đăng ký
+                </Link>
+              </div>
+            ) : (
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-2 p-1 pr-3 rounded-full border border-gray-200 hover:shadow-md transition bg-white"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden">
+                    {user.avatar ? (
+                      <img
+                        src={user.avatar}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="p-1.5 w-full h-full text-gray-400" />
+                    )}
+                  </div>
+                  <span className="hidden sm:block text-sm font-semibold text-gray-700 max-w-[80px] truncate">
+                    {user.fullName}
+                  </span>
+                </button>
+
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-3 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                    <div className="px-5 py-3 border-b border-gray-50 bg-gray-50/50">
+                      <p className="font-bold text-gray-800 truncate">
+                        {user.fullName}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {user.email}
+                      </p>
+                    </div>
+                    <div className="py-1">
+                      {user.role === "ADMIN" && (
+                        <Link
+                          to="/admin"
+                          className="px-5 py-2.5 flex items-center gap-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                        >
+                          <Shield size={16} /> Trang quản trị
+                        </Link>
+                      )}
+                      <Link
+                        to="/purchase"
+                        className="px-5 py-2.5 flex items-center gap-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                      >
+                        <ShoppingCart size={16} /> Đơn mua hàng
+                      </Link>
+                      <Link
+                        to="/edit-profile"
+                        className="px-5 py-2.5 flex items-center gap-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                      >
+                        <Settings size={16} /> Cài đặt tài khoản
+                      </Link>
+                    </div>
+                    <div className="border-t border-gray-100 mt-1 py-1">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-5 py-2.5 flex items-center gap-3 text-sm text-red-600 hover:bg-red-50 font-medium"
+                      >
+                        <LogOut size={16} /> Đăng xuất
+                      </button>
                     </div>
                   </div>
-
-                  {user.role === "ADMIN" && (
-                    <button
-                      onClick={() => { navigate("/admin"); setShowUserMenu(false); }}
-                      className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100 flex items-center gap-2"
-                    >
-                      <Shield size={16} /> Admin Dashboard
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => { navigate("/purchase"); setShowUserMenu(false); }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 flex items-center gap-2"
-                  >
-                    <ShoppingCart size={16} /> Đơn mua
-                  </button>
-
-                  <button onClick={handleProfile} className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 flex items-center gap-2">
-                    <User size={16} /> Thông tin cá nhân
-                  </button>
-
-                  <button onClick={handleChangePassword} className="w-full text-left px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 flex items-center gap-2">
-                    <Lock size={16} /> Đổi mật khẩu
-                  </button>
-
-                  <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center gap-2 border-t">
-                    <LogOut size={16} /> Đăng xuất
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
-
-        {/* Nút menu mobile */}
-        <button className="md:hidden p-2 text-gray-700" onClick={() => setIsOpen(!isOpen)}>
-          {isOpen ? <X size={26} /> : <Menu size={26} />}
-        </button>
       </div>
 
+      {/* TẦNG 2: MAIN MENU */}
       <MainMenu />
     </header>
   );

@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -48,8 +49,18 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public Order createOrder(Order order) {
-        order.setOrderId(generateOrderId());
-        order.setOrderDate(LocalDateTime.now());
+        // Nếu là đơn hàng mới (không phải giỏ hàng), tạo ID và ngày
+        if (order.getIsOrder()) {
+            order.setOrderId(generateOrderId());
+            order.setOrderDate(LocalDateTime.now());
+        }
+        // Nếu là thêm vào giỏ hàng, ta có thể không cần sinh OrderId mới ngay
+        // nếu logic của bạn cho phép lưu OrderId null hoặc tự generate @GeneratedValue.
+        // Nhưng để an toàn với code cũ, cứ giữ nguyên hoặc tùy chỉnh.
+        else {
+            order.setOrderId(generateOrderId());
+            order.setOrderDate(LocalDateTime.now());
+        }
 
         if (order.getOrderDetails() != null) {
             for (OrderDetail detail : order.getOrderDetails()) {
@@ -57,12 +68,27 @@ public class OrderServiceImpl implements OrderService {
                         .orElseThrow(() -> new RuntimeException("Product not found"));
 
                 if (!order.getIsOrder()) {
-                    boolean exists = orderRepository.existsByUserIdAndProductIdAndIsOrderFalse(
+                    Optional<OrderDetail> existingDetailOpt = orderDetailRepository.findExistingCartItem(
                             order.getUserId(),
                             product.getProductId()
                     );
-                    if (exists) {
-                        throw new RuntimeException("Sản phẩm " + product.getProductName() + " đã tồn tại trong giỏ hàng");
+
+                    if (existingDetailOpt.isPresent()) {
+
+                        OrderDetail existingDetail = existingDetailOpt.get();
+
+                        int newQuantity = existingDetail.getQuantity() + detail.getQuantity();
+
+                        if (product.getQuantity() < newQuantity) {
+                            throw new RuntimeException("Số lượng sản phẩm " + product.getProductName() + " trong kho không đủ để cộng thêm");
+                        }
+
+                        existingDetail.setQuantity(newQuantity);
+
+                        // existingDetail.setUnitPrice(product.getPrice());
+                        orderDetailRepository.save(existingDetail);
+
+                        return existingDetail.getOrder();
                     }
                 }
 
