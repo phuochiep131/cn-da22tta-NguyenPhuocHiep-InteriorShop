@@ -27,10 +27,11 @@ export default function App() {
     <Router>
       <ScrollToTop />
       <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
           <Route path="/edit-profile" element={<EditProfile />} />
           <Route path="/products" element={<Products />} />
           <Route path="/product/:productId" element={<ProductDetail />} />
@@ -38,7 +39,6 @@ export default function App() {
           <Route path="/purchase" element={<Purchase />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/payment-return" element={<PaymentReturn />} />
-
         </Route>
 
         <Route path="/admin" element={<AdminLayout />}>
@@ -52,8 +52,6 @@ export default function App() {
           <Route path="orders" element={<div>Quản lý đơn hàng</div>} />
           <Route path="statistics" element={<div>Trang thống kê</div>} />
         </Route>
-
-        
       </Routes>
     </Router>
   );

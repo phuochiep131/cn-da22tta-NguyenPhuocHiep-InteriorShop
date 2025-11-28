@@ -3,7 +3,7 @@ import Cookies from "js-cookie";
 import { CartContext } from "../../context/CartContext";
 import { message } from "antd";
 import { useNavigate } from "react-router-dom";
-import { Trash2 } from "lucide-react";
+import { Trash2, ShoppingBag, Minus, Plus, ArrowRight, AlertCircle } from "lucide-react"; // Thêm icon AlertCircle
 import nothingImg from "../../assets/nothing.png";
 
 export default function CartPage() {
@@ -61,13 +61,29 @@ export default function CartPage() {
     if (checked) messageApi.success("Đã chọn tất cả sản phẩm");
   };
 
+  // --- LOGIC MỚI: KIỂM TRA TỒN KHO ---
   const handleQuantityChange = (orderDetailId, delta) => {
     setCartOrders((prev) =>
       prev.map((order) => ({
         ...order,
         orderDetails: order.orderDetails.map((item) => {
           if (item.orderDetailId === orderDetailId) {
-            const newQty = Math.max(item.quantity + delta, 1);
+            // Giả sử API trả về field 'stock' trong object product
+            // Nếu API chưa có, bạn cần bảo Backend thêm vào. 
+            // Tạm thời fallback = 999 nếu không có field này để tránh lỗi.
+            const maxStock = item.product.quantity || 999; 
+            
+            const newQty = item.quantity + delta;
+
+            // Kiểm tra cận dưới
+            if (newQty < 1) return item;
+
+            // Kiểm tra cận trên (Tồn kho)
+            if (newQty > maxStock) {
+              messageApi.warning(`Sản phẩm chỉ còn lại ${maxStock} món!`);
+              return item; // Không cho tăng nữa
+            }
+
             return {
               ...item,
               quantity: newQty,
@@ -125,6 +141,15 @@ export default function CartPage() {
       return messageApi.error("Vui lòng chọn ít nhất 1 sản phẩm để đặt hàng!");
     }
 
+    // Kiểm tra lại lần cuối trước khi checkout (Optional: đề phòng hack html)
+    const hasInvalidQuantity = selectedOrders.some(order => 
+        order.orderDetails.some(item => item.quantity > (item.product.quantity || 999))
+    );
+
+    if (hasInvalidQuantity) {
+        return messageApi.error("Một số sản phẩm vượt quá số lượng tồn kho. Vui lòng kiểm tra lại!");
+    }
+
     let orderToSend;
     if (
       selectedOrders.length === 1 &&
@@ -153,125 +178,171 @@ export default function CartPage() {
 
   if (!cartOrders.length) {
     return (
-      <div className="max-w-6xl mx-auto p-4">
-        <h2 className="text-2xl font-bold mb-6">Giỏ hàng của bạn</h2>
-        <div className="flex flex-col items-center justify-center mt-20 mb-20">
-          <img src={nothingImg} className="w-32 h-32 mb-4" alt="empty" />
-          <p className="text-gray-500 text-lg">
-            Hiện tại không có sản phẩm nào trong giỏ hàng.
-          </p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center bg-gray-50 p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-sm text-center max-w-md w-full">
+          <img src={nothingImg} className="w-40 h-40 mx-auto mb-6 opacity-80" alt="empty" />
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Giỏ hàng trống</h2>
+          <p className="text-gray-500 mb-6">Có vẻ như bạn chưa thêm sản phẩm nào vào giỏ hàng.</p>
+          <button onClick={() => navigate("/")} className="bg-black text-white px-6 py-3 rounded-full hover:bg-gray-800 transition-colors w-full font-medium">
+            Tiếp tục mua sắm
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-4">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       {contextHolder}
-      <h2 className="text-2xl font-bold mb-6">Giỏ hàng của bạn</h2>
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-extrabold text-gray-900 mb-8 flex items-center gap-3">
+          <ShoppingBag className="w-8 h-8" /> Giỏ hàng của bạn
+        </h1>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white shadow rounded-lg border-separate border-spacing-y-3">
-          <thead>
-            <tr className="border-b">
-              <th className="px-4 py-2 w-12 text-center">
+        <div className="lg:grid lg:grid-cols-12 lg:gap-10">
+          <div className="lg:col-span-8 space-y-6">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+              <label className="flex items-center gap-3 cursor-pointer select-none">
                 <input
                   type="checkbox"
-                  checked={Object.values(selectedItems).every(Boolean)}
+                  className="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  checked={Object.values(selectedItems).length > 0 && Object.values(selectedItems).every(Boolean)}
                   onChange={(e) => handleSelectAll(e.target.checked)}
                 />
-              </th>
-              <th className="px-4 py-2 text-left">Sản phẩm</th>
-              <th className="px-4 py-2 text-center">Giá</th>
-              <th className="px-4 py-2 text-center">Số lượng</th>
-              <th className="px-4 py-2 text-right">Thành tiền</th>
-            </tr>
-          </thead>
+                <span className="font-medium text-gray-700">
+                  Chọn tất cả ({cartOrders.reduce((acc, order) => acc + order.orderDetails.length, 0)} sản phẩm)
+                </span>
+              </label>
+            </div>
 
-          <tbody>
-            {cartOrders.map((order) =>
-              order.orderDetails.map((item) => (
-                <tr
-                  key={item.orderDetailId}
-                  className="bg-white shadow-sm rounded-lg"
-                >
-                  <td className="text-center">
-                    <input
-                      type="checkbox"
-                      checked={!!selectedItems[item.orderDetailId]}
-                      onChange={() => handleSelectItem(item.orderDetailId)}
-                    />
-                  </td>
+            <div className="space-y-4">
+              {cartOrders.map((order) =>
+                order.orderDetails.map((item) => {
+                  // Lấy tồn kho (mặc định 999 nếu API thiếu)
+                  const stock = item.product.quantity || 999;
+                  const isMaxReached = item.quantity >= stock;
 
-                  <td className="flex items-center gap-4 px-4 py-2">
-                    <img
-                      src={item.product.imageUrl}
-                      alt={item.product.productName}
-                      className="w-16 h-16 object-cover rounded-md border"
-                    />
-                    <span>{item.product.productName}</span>
-                  </td>
+                  return (
+                    <div
+                      key={item.orderDetailId}
+                      className="group bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative"
+                    >
+                      <div className="flex gap-4 sm:gap-6">
+                        <div className="flex items-center justify-center pt-1 sm:pt-0">
+                          <input
+                            type="checkbox"
+                            className="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                            checked={!!selectedItems[item.orderDetailId]}
+                            onChange={() => handleSelectItem(item.orderDetailId)}
+                          />
+                        </div>
 
-                  <td className="text-center">
-                    {item.unitPrice.toLocaleString()}₫
-                  </td>
+                        <div className="flex-shrink-0 w-24 h-24 sm:w-32 sm:h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                          <img
+                            src={item.product.imageUrl}
+                            alt={item.product.productName}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
 
-                  <td className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() =>
-                          handleQuantityChange(item.orderDetailId, -1)
-                        }
-                        className="px-2 py-1 border rounded hover:bg-gray-100 focus:outline-none"
-                      >
-                        -
-                      </button>
+                        <div className="flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex justify-between items-start">
+                              <h3 className="text-base sm:text-lg font-semibold text-gray-800 line-clamp-2 pr-8">
+                                {item.product.productName}
+                              </h3>
+                              <button
+                                onClick={() => handleDeleteItem(order.orderId)}
+                                className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                                title="Xóa sản phẩm"
+                              >
+                                <Trash2 size={20} />
+                              </button>
+                            </div>
+                            <p className="text-gray-500 text-sm mt-1">
+                              Đơn giá: {item.unitPrice.toLocaleString()}₫
+                            </p>
+                            
+                            {/* HIỂN THỊ TỒN KHO */}
+                            <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                                <AlertCircle size={12}/>
+                                Còn lại trong kho: {stock}
+                            </p>
+                          </div>
 
-                      <span>{item.quantity}</span>
+                          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mt-4">
+                            <div className="flex items-center border border-gray-300 rounded-lg w-max">
+                              <button
+                                onClick={() => handleQuantityChange(item.orderDetailId, -1)}
+                                className="p-2 hover:bg-gray-100 text-gray-600 transition-colors rounded-l-lg"
+                                disabled={item.quantity <= 1}
+                              >
+                                <Minus size={16} />
+                              </button>
+                              
+                              <span className="w-10 text-center font-medium text-gray-900 text-sm">
+                                {item.quantity}
+                              </span>
+                              
+                              <button
+                                onClick={() => handleQuantityChange(item.orderDetailId, 1)}
+                                disabled={isMaxReached} // Disable nút nếu đạt giới hạn
+                                className={`p-2 transition-colors rounded-r-lg ${
+                                    isMaxReached 
+                                    ? "bg-gray-100 text-gray-300 cursor-not-allowed" // Style disabled
+                                    : "hover:bg-gray-100 text-gray-600"
+                                }`}
+                              >
+                                <Plus size={16} />
+                              </button>
+                            </div>
 
-                      <button
-                        onClick={() =>
-                          handleQuantityChange(item.orderDetailId, 1)
-                        }
-                        className="px-2 py-1 border rounded hover:bg-gray-100 focus:outline-none"
-                      >
-                        +
-                      </button>
+                            <div className="text-right">
+                              <span className="block text-xs text-gray-500 sm:hidden">
+                                Thành tiền:
+                              </span>
+                              <span className="text-lg font-bold text-red-600">
+                                {item.subtotal.toLocaleString()}₫
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </td>
+                  );
+                })
+              )}
+            </div>
+          </div>
 
-                  <td className="text-right px-4 py-2 font-bold text-red-600">
-                    {item.subtotal.toLocaleString()}₫
-                  </td>
+          <div className="lg:col-span-4 mt-8 lg:mt-0">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:sticky lg:top-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Tổng giỏ hàng</h2>
+              <div className="space-y-4 mb-6">
+                <div className="flex justify-between text-gray-600">
+                  <span>Tạm tính</span>
+                  <span>{selectedTotal.toLocaleString()}₫</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Giảm giá</span>
+                  <span>0₫</span>
+                </div>
+                <div className="border-t border-dashed border-gray-200 pt-4 flex justify-between items-center">
+                  <span className="font-bold text-gray-900 text-lg">Tổng cộng</span>
+                  <span className="font-bold text-2xl text-red-600">{selectedTotal.toLocaleString()}₫</span>
+                </div>
+              </div>
 
-                  <td className="text-center">
-                    <Trash2
-                      size={18}
-                      className="text-red-600 hover:text-red-400 cursor-pointer"
-                      onClick={() => handleDeleteItem(order.orderId)}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex justify-end items-center mt-4 gap-6">
-        <div className="text-lg font-semibold">
-          Tổng tiền:{" "}
-          <span className="text-red-600">
-            {selectedTotal.toLocaleString()}₫
-          </span>
+              <button
+                onClick={handleCheckout}
+                className="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-red-200 hover:bg-red-700 hover:shadow-xl transition-all flex items-center justify-center gap-2 group"
+              >
+                Tiến hành đặt hàng
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+          </div>
         </div>
-
-        <button
-          onClick={handleCheckout}
-          className="bg-red-600 text-white py-2 px-6 rounded-lg font-bold hover:bg-red-500"
-        >
-          Đặt hàng
-        </button>
       </div>
     </div>
   );
