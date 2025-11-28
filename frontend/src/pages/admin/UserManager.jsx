@@ -1,10 +1,11 @@
 import { useState, useEffect, useContext } from "react";
-import { Table, Input, Button, Space, Modal, Form, Select, message, 
-Popconfirm, DatePicker, Tag } from "antd";
-import { EditOutlined, DeleteOutlined, SearchOutlined, PlusOutlined } from "@ant-design/icons";
+import { Table, Input, Button, Space, Modal, Form, Select, message, Popconfirm, DatePicker, Tag, Card, Avatar, Tooltip, Typography, Badge } from "antd";
+import { EditOutlined, DeleteOutlined, SearchOutlined, PlusOutlined, UserOutlined, ReloadOutlined } from "@ant-design/icons";
 import { AuthContext } from "../../context/AuthContext";
 import Cookies from "js-cookie";
 import dayjs from "dayjs";
+
+const { Title, Text } = Typography;
 
 export default function UserManager() {
   const [users, setUsers] = useState([]);
@@ -15,13 +16,11 @@ export default function UserManager() {
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [form] = Form.useForm();
-
-  const [messageApi, contextHolder] = message.useMessage(); // ✅ thêm dòng này
+  const [messageApi, contextHolder] = message.useMessage();
 
   const token = Cookies.get("jwt");
   const { user, logout } = useContext(AuthContext);
 
-  // ------------------ Fetch Users ------------------
   useEffect(() => {
     if (!user || !token) return;
     if (user.role !== "ADMIN") {
@@ -52,7 +51,6 @@ export default function UserManager() {
     }
   };
 
-  // ------------------ Handlers ------------------
   const handleAdd = () => {
     setEditingUser(null);
     form.resetFields();
@@ -67,7 +65,6 @@ export default function UserManager() {
     });
     setIsModalOpen(true);
   };
-
 
   const handleDelete = async (userId) => {
     try {
@@ -84,10 +81,7 @@ export default function UserManager() {
   };
 
   const openDeleteModal = () => {
-    if (!selectedRowKeys.length) {
-      messageApi.warning("Vui lòng chọn ít nhất một người dùng để xóa!");
-      return;
-    }
+    if (!selectedRowKeys.length) return;
     setIsDeleteModalOpen(true);
   };
 
@@ -129,10 +123,7 @@ export default function UserManager() {
       });
       if (!response.ok) throw new Error("Save failed");
 
-      messageApi.success(
-        editingUser ? "Cập nhật người dùng thành công" : "Thêm người dùng thành công"
-      );
-
+      messageApi.success(editingUser ? "Cập nhật thành công" : "Thêm mới thành công");
       setIsModalOpen(false);
       fetchUsers();
     } catch {
@@ -140,7 +131,7 @@ export default function UserManager() {
     }
   };
 
-  const handleSearch = (value) => setSearchText(value.toLowerCase());
+  const handleSearch = (e) => setSearchText(e.target.value.toLowerCase());
 
   const filteredUsers = users
     .filter(
@@ -158,197 +149,179 @@ export default function UserManager() {
 
   const columns = [
     {
-      title: "Ảnh đại diện",
-      dataIndex: "avatar",
-      render: (avatar) => (
-        <img
-          src={
-            avatar ||
-            "https://res.cloudinary.com/ddnzj70uw/image/upload/v1759990027/avt-default_r2kgze.png"
-          }
-          alt="avatar"
-          className="w-10 h-10 rounded-full object-cover"
-        />
+      title: "Người dùng",
+      dataIndex: "fullName",
+      width: 250,
+      render: (text, record) => (
+        <div className="flex items-center gap-3">
+          <Avatar src={record.avatar} icon={<UserOutlined />} size="large" />
+          <div className="flex flex-col">
+            <span className="font-medium text-gray-800">{text}</span>
+            <span className="text-xs text-gray-500">{record.email}</span>
+          </div>
+        </div>
       ),
     },
-    { title: "Họ và tên", dataIndex: "fullName" },
-    { title: "Email", dataIndex: "email" },
-    { title: "Giới tính", dataIndex: "gender" },
+    { 
+        title: "Vai trò", 
+        dataIndex: "role",
+        width: 100,
+        render: (role) => (
+            <Tag color={role === "ADMIN" ? "red" : "blue"}>{role}</Tag>
+        ) 
+    },
+    { title: "SĐT", dataIndex: "phoneNumber", width: 120 },
+    { 
+        title: "Giới tính", 
+        dataIndex: "gender", 
+        responsive: ['md'],
+        width: 100,
+    },
     {
       title: "Ngày sinh",
       dataIndex: "birthDate",
-      key: "birthDate",
-      render: (text) => (text ? new Date(text).toLocaleDateString() : "—"),
-    },
-    { title: "Số điện thoại", dataIndex: "phoneNumber" },
-    {
-      title: "Vai trò",
-      dataIndex: "role",
-      render: (role) => {
-        let color = "blue";
-        if (role === "ADMIN") {
-          color = "red";
-        }
-        return (
-          <Tag color={color} style={{ borderRadius: "6px", padding: "2px 8px" }}>
-            {role}
-          </Tag>
-        );
-      },
+      responsive: ['lg'],
+      render: (text) => (text ? new Date(text).toLocaleDateString("vi-VN") : "—"),
     },
     {
-      title: "Ngày tạo tài khoản",
+      title: "Ngày tạo",
       dataIndex: "createdAt",
-      key: "createdAt",
-      render: (text) => new Date(text).toLocaleString(),
+      responsive: ['xl'],
+      render: (text) => new Date(text).toLocaleDateString("vi-VN"),
     },
-
     {
-      title: "Thao tác",
+      title: "",
+      fixed: 'right',
+      width: 100,
       render: (_, record) => (
         <Space>
-          <Button icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-            Sửa
-          </Button>
+          <Tooltip title="Sửa">
+            <Button type="text" icon={<EditOutlined className="text-blue-600"/>} onClick={() => handleEdit(record)} />
+          </Tooltip>
           <Popconfirm
-            title="Bạn có chắc chắn muốn xóa người dùng này?"
+            title="Xóa người dùng?"
             onConfirm={() => handleDelete(record.userId)}
+            okText="Xóa" cancelText="Hủy" okButtonProps={{danger: true}}
           >
-            <Button danger icon={<DeleteOutlined />}>
-              Xóa
-            </Button>
+             <Tooltip title="Xóa">
+                <Button type="text" danger icon={<DeleteOutlined />} />
+             </Tooltip>
           </Popconfirm>
         </Space>
       ),
     },
   ];
 
-  // ------------------ Render ------------------
   return (
-    <div className="p-4 bg-gray-50 w-full h-full box-border">
+    <div className="p-4 md:p-6 bg-slate-50 min-h-screen">
       {contextHolder}
-      <h2 className="text-2xl font-semibold mb-6">Quản lý người dùng</h2>
+      
+      <Card bordered={false} className="shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div>
+                <Title level={4} style={{ margin: 0 }}>Quản lý người dùng</Title>
+                <Text type="secondary">{users.length} tài khoản trong hệ thống</Text>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                <Input
+                  placeholder="Tìm theo tên, email..."
+                  prefix={<SearchOutlined className="text-gray-400" />}
+                  onChange={handleSearch}
+                  className="w-full sm:w-64"
+                />
+                
+                {selectedRowKeys.length > 0 && (
+                     <Button danger icon={<DeleteOutlined />} onClick={openDeleteModal}>
+                       Xóa ({selectedRowKeys.length})
+                     </Button>
+                )}
+                
+                <Button icon={<ReloadOutlined />} onClick={fetchUsers} />
+                
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} className="bg-indigo-600">
+                  Thêm mới
+                </Button>
+            </div>
+        </div>
 
-      <Space className="mb-4 flex-wrap" wrap>
-        <Input
-          placeholder="Tìm kiếm theo tên hoặc email"
-          prefix={<SearchOutlined />}
-          onChange={(e) => handleSearch(e.target.value)}
-          className="w-64"
+        <Table
+            rowSelection={rowSelection}
+            dataSource={filteredUsers}
+            columns={columns}
+            rowKey="userId"
+            loading={loading}
+            pagination={{ pageSize: 8, showSizeChanger: true }}
+            scroll={{ x: 800 }}
         />
-        <Button
-          icon={<PlusOutlined />}
-          type="primary"
-          onClick={handleAdd}
-          className="bg-blue-600"
-        >
-          Thêm người dùng
-        </Button>
-        <Button
-          danger
-          disabled={!selectedRowKeys.length}
-          onClick={openDeleteModal}
-        >
-          Xóa nhiều
-        </Button>
-        <Button onClick={fetchUsers}>Làm mới</Button>
-      </Space>
+      </Card>
 
-      <Table
-        rowSelection={rowSelection}
-        dataSource={filteredUsers}
-        columns={columns}
-        rowKey="userId"
-        loading={loading}
-        pagination={{ pageSize: 8 }}
-        scroll={{ x: "max-content" }}
-        className="bg-white shadow rounded-lg"
-      />
-
-      {/* Modal thêm/sửa */}
       <Modal
-        title={editingUser ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
+        title={editingUser ? "Chỉnh sửa hồ sơ" : "Tạo tài khoản mới"}
         open={isModalOpen}
         onOk={handleSave}
         onCancel={() => setIsModalOpen(false)}
-        okText="Lưu"
-        cancelText="Hủy"
-        width={900} // rộng hơn để hiển thị 4 cột đẹp hơn
+        okText="Lưu lại"
+        cancelText="Hủy bỏ"
+        width={800}
+        centered
       >
-        <Form form={form} layout="vertical">
-          <div
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
-            style={{ marginTop: "10px" }}
-          >
-            <Form.Item
-              name="fullName"
-              label="Họ và tên"
-              rules={[{ required: true, message: "Vui lòng nhập họ và tên" }]}
-            >
-              <Input />
+        <Form form={form} layout="vertical" className="pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+            <Form.Item name="fullName" label="Họ và tên" rules={[{ required: true }]}>
+              <Input placeholder="Nhập họ tên đầy đủ" />
             </Form.Item>
 
-            <Form.Item
-              name="email"
-              label="Email"
-              rules={[{ required: true, message: "Vui lòng nhập email" }]}
-            >
-              <Input disabled={!!editingUser} />
+            <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}>
+              <Input disabled={!!editingUser} placeholder="email@example.com" />
             </Form.Item>
 
             {!editingUser && (
-              <Form.Item
-                name="password"
-                label="Mật khẩu"
-                rules={[{ required: true, message: "Vui lòng nhập mật khẩu" }]}
-              >
-                <Input.Password />
+              <Form.Item name="password" label="Mật khẩu" rules={[{ required: true }]}>
+                <Input.Password placeholder="Nhập mật khẩu" />
               </Form.Item>
             )}
 
             <Form.Item name="phoneNumber" label="Số điện thoại">
-              <Input />
-            </Form.Item>
-
-            <Form.Item name="address" label="Địa chỉ">
-              <Input />
+              <Input placeholder="09xxxxxxx" />
             </Form.Item>
 
             <Form.Item name="gender" label="Giới tính">
-              <Select>
+              <Select placeholder="Chọn giới tính">
                 <Select.Option value="Nam">Nam</Select.Option>
                 <Select.Option value="Nữ">Nữ</Select.Option>
               </Select>
             </Form.Item>
 
-            <Form.Item
-              name="birthDate"
-              label="Ngày sinh"
-            >
-              <DatePicker style={{ width: "100%" }} format="YYYY-MM-DD" />
+            <Form.Item name="birthDate" label="Ngày sinh">
+              <DatePicker className="w-full" format="YYYY-MM-DD" placeholder="Chọn ngày sinh" />
             </Form.Item>
 
-            <Form.Item name="role" label="Vai trò">
+            <Form.Item name="role" label="Phân quyền">
               <Select>
-                <Select.Option value="USER">USER</Select.Option>
-                <Select.Option value="ADMIN">ADMIN</Select.Option>
+                <Select.Option value="USER">USER (Khách hàng)</Select.Option>
+                <Select.Option value="ADMIN">ADMIN (Quản trị)</Select.Option>
               </Select>
+            </Form.Item>
+            
+            <Form.Item name="address" label="Địa chỉ" className="md:col-span-2">
+              <Input placeholder="Nhập địa chỉ liên hệ" />
             </Form.Item>
           </div>
         </Form>
       </Modal>
-      
-      {/* Modal xóa nhiều */}
+
       <Modal
-        title={`Xác nhận xóa ${selectedRowKeys.length} người dùng`}
+        title="Xác nhận xóa"
         open={isDeleteModalOpen}
         onOk={handleConfirmDelete}
         onCancel={() => setIsDeleteModalOpen(false)}
-        okText="Xóa"
+        okText="Xóa vĩnh viễn"
         cancelText="Hủy"
         okButtonProps={{ danger: true }}
       >
-        <p>Hành động này không thể hoàn tác. Bạn có chắc chắn muốn xóa?</p>
+        <p>Bạn có chắc chắn muốn xóa <b>{selectedRowKeys.length}</b> người dùng đã chọn?</p>
+        <p className="text-red-500 text-sm">Hành động này không thể hoàn tác.</p>
       </Modal>
     </div>
   );

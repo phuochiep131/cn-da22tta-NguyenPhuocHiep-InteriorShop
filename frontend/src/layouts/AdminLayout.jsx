@@ -1,6 +1,6 @@
-import { useContext } from "react";
+import { useContext, useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { Menu } from "antd";
+import { Menu, Drawer, Button, Avatar, Dropdown } from "antd";
 import {
   HomeOutlined,
   UserOutlined,
@@ -9,6 +9,12 @@ import {
   BarChartOutlined,
   LogoutOutlined,
   ArrowLeftOutlined,
+  MenuOutlined,
+  BellOutlined,
+  SettingOutlined,
+  CreditCardOutlined,
+  TagsOutlined,
+  AppstoreOutlined,
 } from "@ant-design/icons";
 import { AuthContext } from "../context/AuthContext";
 
@@ -16,104 +22,140 @@ export default function AdminLayout() {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleMenuClick = ({ key }) => {
-    switch (key) {
-      case "home":
-        navigate("/");
-        break;
-      case "dashboard":
-        navigate("/admin");
-        break;
-      case "users":
-        navigate("/admin/users");
-        break;
-      case "categories":
-        navigate("/admin/categories");
-        break;
-      case "products":
-        navigate("/admin/products");
-        break;
-      case "payment-methods":
-        navigate("/admin/payment-methods");
-        break;
-      case "coupons":
-        navigate("/admin/coupons");
-        break;
-      case "orders-manager":
-        navigate("/admin/orders-manager");
-        break;
-      case "stats":
-        navigate("/admin/statistics");
-        break;
-      case "logout":
-        logout();
-        navigate("/");
-        break;
-      default:
-        break;
+    setMobileOpen(false);
+    if (key === "logout") {
+      logout();
+      navigate("/");
+      return;
     }
+    if (key === "home") {
+      navigate("/");
+      return;
+    }
+    const path = key === "dashboard" ? "/admin" : `/admin/${key}`;
+    navigate(path);
   };
 
   const menuItems = [
-    { key: "home", icon: <ArrowLeftOutlined />, label: "Trang chủ" },
-    { key: "dashboard", icon: <HomeOutlined />, label: "Dashboard" },
-    { key: "users", icon: <UserOutlined />, label: "Người dùng" },
-    { key: "categories", icon: <ShoppingOutlined />, label: "Danh mục" },
-    { key: "products", icon: <ShoppingOutlined />, label: "Sản phẩm" },
-    { key: "payment-methods", icon: <ShoppingOutlined />, label: "Phương thức thanh toán" },
+    { key: "home", icon: <ArrowLeftOutlined />, label: "Về trang chủ" },
+    { type: "divider" },
+    { key: "dashboard", icon: <AppstoreOutlined />, label: "Tổng quan" },
+    { key: "orders", icon: <ShoppingOutlined />, label: "Đơn hàng" },
+    { key: "products", icon: <TagsOutlined />, label: "Sản phẩm" },
+    { key: "categories", icon: <MenuOutlined />, label: "Danh mục" },
+    { key: "users", icon: <UserOutlined />, label: "Khách hàng" },
+    { key: "payment-methods", icon: <CreditCardOutlined />, label: "Thanh toán" },
     { key: "coupons", icon: <DollarOutlined />, label: "Mã giảm giá" },
-    { key: "orders-manager", icon: <DollarOutlined />, label: "Đơn hàng" },
-    { key: "stats", icon: <BarChartOutlined />, label: "Thống kê" },
-    { key: "logout", icon: <LogoutOutlined />, label: "Đăng xuất" },
+    { key: "stats", icon: <BarChartOutlined />, label: "Báo cáo doanh thu" },
+    { type: "divider" },
+    { key: "logout", icon: <LogoutOutlined />, label: "Đăng xuất", danger: true },
   ];
 
-  return (
-    <div className="flex min-h-screen w-screen bg-gray-100">
-      {/* Sidebar */}
-      <div className="w-52 bg-gray-900 text-white flex flex-col flex-shrink-0">
-        <div className="py-12 text-center text-xl font-bold border-b border-gray-700">
-          🛠️ Admin
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[
-            location.pathname === "/admin"
-              ? "dashboard"
-              : location.pathname.replace("/admin/", ""),
-          ]}
-          items={menuItems}
-          onClick={handleMenuClick}
-          className="flex-1 bg-gray-900"
-        />
+  const SidebarContent = () => (
+    <div className="h-full flex flex-col bg-[#001529] text-white">
+      <div className="py-6 flex items-center justify-center border-b border-gray-700 bg-[#002140]">
+        <span className="text-xl font-bold tracking-wider uppercase text-white">
+          🛋️ Admin Interior
+        </span>
       </div>
+      <Menu
+        theme="dark"
+        mode="inline"
+        selectedKeys={[
+          location.pathname === "/admin"
+            ? "dashboard"
+            : location.pathname.split("/").pop(),
+        ]}
+        items={menuItems}
+        onClick={handleMenuClick}
+        className="flex-1 py-4 text-base bg-[#001529]"
+      />
+      <div className="p-4 text-xs text-center text-gray-500 border-t border-gray-700">
+        v1.0.0 - Interior CMS
+      </div>
+    </div>
+  );
 
-      {/* Main content */}
-      <div className="flex flex-col flex-1 overflow-hidden">
+  const userMenu = (
+    <Menu items={[
+      { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ cá nhân' },
+      { key: 'settings', icon: <SettingOutlined />, label: 'Cài đặt' },
+      { type: 'divider' },
+      { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', onClick: logout, danger: true }
+    ]} />
+  );
+
+  return (
+    <div className="flex h-screen w-full bg-gray-50 overflow-hidden">
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <div className="w-64 flex-shrink-0 shadow-xl z-20 hidden md:block">
+          <SidebarContent />
+        </div>
+      )}
+
+      {/* Mobile Drawer Sidebar */}
+      <Drawer
+        placement="left"
+        onClose={() => setMobileOpen(false)}
+        open={mobileOpen}
+        styles={{ body: { padding: 0 } }}
+        width={250}
+      >
+        <SidebarContent />
+      </Drawer>
+
+      {/* Main Content Area */}
+      <div className="flex flex-col flex-1 min-w-0">
         {/* Header */}
-        <header className="bg-white shadow flex justify-between items-center px-6 h-16 sticky top-0 z-20">
-          <h1 className="text-lg font-bold text-gray-800">Admin Dashboard</h1>
-          <div className="flex items-center gap-3">
-            <img
-              src={
-                user?.avatar ||
-                "https://res.cloudinary.com/ddnzj70uw/image/upload/v1759990027/avt-default_r2kgze.png"
-              }
-              alt="avatar"
-              className="w-9 h-9 rounded-full object-cover border border-gray-200"
-            />
-            <span className="text-gray-700 font-medium">
-              {user?.fullName || user?.email}
-            </span>
+        <header className="bg-white shadow-sm h-16 flex justify-between items-center px-4 sticky top-0 z-10">
+          <div className="flex items-center gap-4">
+            {isMobile && (
+              <Button
+                icon={<MenuOutlined />}
+                onClick={() => setMobileOpen(true)}
+                size="large"
+              />
+            )}
+            <h1 className="text-xl font-bold text-gray-800 hidden sm:block">
+              Quản trị hệ thống
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <Button type="text" shape="circle" icon={<BellOutlined />} size="large" />
+            
+            <Dropdown overlay={userMenu} placement="bottomRight" trigger={['click']}>
+              <div className="flex items-center gap-3 cursor-pointer hover:bg-gray-100 px-3 py-1 rounded-lg transition">
+                <Avatar
+                  src={user?.avatar || "https://res.cloudinary.com/ddnzj70uw/image/upload/v1759990027/avt-default_r2kgze.png"}
+                  size="large"
+                  className="border border-gray-200"
+                />
+                <div className="hidden md:flex flex-col items-start">
+                  <span className="text-sm font-semibold text-gray-700 leading-tight">
+                    {user?.fullName || "Admin"}
+                  </span>
+                  <span className="text-xs text-gray-500">Administrator</span>
+                </div>
+              </div>
+            </Dropdown>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-auto w-full">
-          <div className="w-full h-full">
-            <Outlet />
-          </div>
+        {/* Scrollable Page Content */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 bg-slate-50">
+          <Outlet />
         </main>
       </div>
     </div>

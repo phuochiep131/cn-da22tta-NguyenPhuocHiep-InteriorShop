@@ -21,15 +21,19 @@ export default function Login() {
     !!localStorage.getItem("rememberEmail")
   );
   const [loading, setLoading] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false); // Trạng thái đang xử lý đăng nhập thành công
   const [showPassword, setShowPassword] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
+  // ✅ Cập nhật: Logic điều hướng tự động khi đã có user (F5 trang)
   useEffect(() => {
-    // Chỉ redirect nếu user đã tồn tại (dành cho trường hợp F5 trang hoặc vào lại link login)
-    // Trong quá trình login, chúng ta sẽ kiểm soát việc redirect bằng tay để hiện thông báo
+    // Chỉ redirect nếu user đã tồn tại và không phải đang trong quá trình login (để tránh conflict logic)
     if (user && !isLoggingIn) {
-      navigate("/");
+      if (user.role === "ADMIN") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     }
   }, [user, navigate, isLoggingIn]);
 
@@ -38,6 +42,7 @@ export default function Login() {
     setLoading(true);
 
     try {
+      // 1. Gọi API Login
       const response = await fetch("http://localhost:8080/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -50,30 +55,41 @@ export default function Login() {
       const token = data.token;
       if (!token) throw new Error("Phản hồi không hợp lệ từ máy chủ");
 
-      // ✅ Lưu email nếu chọn "Ghi nhớ"
+      // 2. Xử lý Ghi nhớ & Cookie
       if (remember) localStorage.setItem("rememberEmail", email);
       else localStorage.removeItem("rememberEmail");
 
-      // ✅ Lưu JWT vào cookie
       Cookies.set("jwt", token, {
         expires: 1 / 24, // 1 giờ
         secure: false,
         sameSite: "Lax",
       });
 
-      // 1. Chuyển sang giao diện Loading
+      // 3. Chuyển sang giao diện Loading thành công
       setIsLoggingIn(true);
-
-      // 2. HIỆN THÔNG BÁO NGAY LẬP TỨC
       messageApi.success("Đăng nhập thành công!");
 
-      // 3. Đợi 1.5s để người dùng nhìn thấy thông báo rồi mới cập nhật User và Redirect
-      setTimeout(async () => {
-        await login(null, token); // Lúc này User update -> useEffect sẽ không chạy lung tung vì component sắp unmount
-        navigate("/");
-      }, 1500);
+      // 4. Lấy thông tin user để kiểm tra Role NGAY LẬP TỨC
+      // Chúng ta fetch trực tiếp ở đây để quyết định hướng đi chính xác
+      const profileRes = await fetch("http://localhost:8080/api/users/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const userData = await profileRes.json();
+      
+      // Cập nhật Context
+      await login(userData, token);
+
+      // 5. Đợi 1 chút để người dùng thấy thông báo rồi điều hướng dựa trên ROLE
+      setTimeout(() => {
+        if (userData && userData.role === "ADMIN") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
+      }, 1000);
+
     } catch (err) {
-      messageApi.error(err.message);
+      messageApi.error(err.message || "Đăng nhập thất bại");
       setLoading(false);
       setIsLoggingIn(false);
     }
@@ -81,7 +97,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex bg-white font-sans">
-      {/* contextHolder phải được đặt ở đây để hiển thị message */}
+      {/* contextHolder để hiển thị message */}
       {contextHolder}
 
       {/* --- CỘT TRÁI: ẢNH BRANDING (Ẩn trên Mobile) --- */}

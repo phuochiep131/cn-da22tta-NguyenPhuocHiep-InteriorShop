@@ -13,4 +13,7 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 
 	@Query("SELECT p FROM Product p WHERE p.categoryId = :categoryId AND p.productId <> :productId")
 	List<Product> findRelatedProducts(@Param("categoryId") String categoryId, @Param("productId") String productId);
+
+	@Query("SELECT SUM(p.quantity) FROM Product p")
+	Long sumTotalStock();
 }
