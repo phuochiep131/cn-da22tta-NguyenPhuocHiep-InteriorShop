@@ -1,8 +1,29 @@
 import { useState, useEffect, useContext } from "react";
-import { Table, Input, Button, Space, Modal, Form, message, Popconfirm } from "antd";
-import { EditOutlined, DeleteOutlined, SearchOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  Table,
+  Input,
+  Button,
+  Space,
+  Modal,
+  Form,
+  message,
+  Popconfirm,
+  Card,
+  Typography,
+  Tooltip
+} from "antd";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  SearchOutlined,
+  PlusOutlined,
+  CreditCardOutlined,
+  ReloadOutlined
+} from "@ant-design/icons";
 import { AuthContext } from "../../context/AuthContext";
 import Cookies from "js-cookie";
+
+const { Title, Text } = Typography;
 
 export default function PaymentMethodManager() {
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -79,7 +100,6 @@ export default function PaymentMethodManager() {
 
   const openDeleteModal = () => {
     if (!selectedRowKeys.length) {
-      messageApi.warning("Vui lòng chọn ít nhất một phương thức để xóa!");
       return;
     }
     setIsDeleteModalOpen(true);
@@ -128,8 +148,8 @@ export default function PaymentMethodManager() {
 
       messageApi.success(
         editingMethod
-          ? "Cập nhật phương thức thanh toán thành công"
-          : "Thêm phương thức thanh toán thành công"
+          ? "Cập nhật thành công"
+          : "Thêm mới thành công"
       );
 
       setIsModalOpen(false);
@@ -139,7 +159,7 @@ export default function PaymentMethodManager() {
     }
   };
 
-  const handleSearch = (value) => setSearchText(value.toLowerCase());
+  const handleSearch = (e) => setSearchText(e.target.value.toLowerCase());
 
   const filteredMethods = paymentMethods.filter((m) =>
     m.name?.toLowerCase().includes(searchText)
@@ -148,22 +168,40 @@ export default function PaymentMethodManager() {
   const rowSelection = { selectedRowKeys, onChange: setSelectedRowKeys };
 
   const columns = [
-    { title: "Mã phương thức", dataIndex: "id", key: "id" },
-    { title: "Tên phương thức", dataIndex: "name", key: "name" },
+    { 
+        title: "Mã PT", 
+        dataIndex: "id", 
+        key: "id",
+        width: 150,
+        render: (text) => <span className="font-mono text-gray-500 font-semibold">{text}</span>
+    },
+    { 
+        title: "Tên phương thức", 
+        dataIndex: "name", 
+        key: "name",
+        render: (text) => (
+            <span className="flex items-center gap-2 font-medium text-gray-800">
+                <CreditCardOutlined className="text-indigo-600" />
+                {text}
+            </span>
+        )
+    },
     {
-      title: "Thao tác",
+      title: "",
+      width: 100,
       render: (_, record) => (
         <Space>
-          <Button icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-            Sửa
-          </Button>
+          <Tooltip title="Chỉnh sửa">
+             <Button type="text" icon={<EditOutlined className="text-blue-600"/>} onClick={() => handleEdit(record)} />
+          </Tooltip>
           <Popconfirm
-            title="Bạn có chắc chắn muốn xóa phương thức này?"
+            title="Xóa phương thức này?"
             onConfirm={() => handleDelete(record.id)}
+            okText="Xóa" cancelText="Hủy" okButtonProps={{danger: true}}
           >
-            <Button danger icon={<DeleteOutlined />}>
-              Xóa
-            </Button>
+            <Tooltip title="Xóa">
+                <Button type="text" danger icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -171,73 +209,95 @@ export default function PaymentMethodManager() {
   ];
 
   return (
-    <div className="p-4 bg-gray-50 w-full h-full box-border">
+    <div className="p-4 md:p-6 bg-slate-50 min-h-screen">
       {contextHolder}
-      <h2 className="text-2xl font-semibold mb-6">Quản lý phương thức thanh toán</h2>
+      
+      {/* Container giới hạn độ rộng cho đẹp vì bảng này ít cột */}
+      <Card bordered={false} className="shadow-sm max-w-4xl mx-auto">
+        
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div>
+                <Title level={4} style={{ margin: 0 }}>Phương thức thanh toán</Title>
+                <Text type="secondary">{paymentMethods.length} phương thức khả dụng</Text>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                <Input
+                  placeholder="Tìm kiếm..."
+                  prefix={<SearchOutlined className="text-gray-400" />}
+                  onChange={handleSearch}
+                  className="w-full sm:w-60"
+                />
 
-      <Space className="mb-4 flex-wrap" wrap>
-        <Input
-          placeholder="Tìm kiếm theo tên phương thức"
-          prefix={<SearchOutlined />}
-          onChange={(e) => handleSearch(e.target.value)}
-          className="w-64"
+                {selectedRowKeys.length > 0 && (
+                     <Button danger icon={<DeleteOutlined />} onClick={openDeleteModal}>
+                       Xóa ({selectedRowKeys.length})
+                     </Button>
+                )}
+
+                <Button icon={<ReloadOutlined/>} onClick={fetchPaymentMethods} />
+                
+                <Button 
+                    type="primary" 
+                    icon={<PlusOutlined />} 
+                    onClick={handleAdd}
+                    className="bg-indigo-600"
+                >
+                  Thêm mới
+                </Button>
+            </div>
+        </div>
+
+        {/* Table Section */}
+        <Table
+            rowSelection={rowSelection}
+            dataSource={filteredMethods}
+            columns={columns}
+            rowKey="id"
+            loading={loading}
+            pagination={{ pageSize: 8 }}
+            scroll={{ x: 600 }}
         />
-        <Button
-          icon={<PlusOutlined />}
-          type="primary"
-          onClick={handleAdd}
-          className="bg-blue-600"
-        >
-          Thêm phương thức
-        </Button>
-        <Button danger disabled={!selectedRowKeys.length} onClick={openDeleteModal}>
-          Xóa nhiều
-        </Button>
-        <Button onClick={fetchPaymentMethods}>Làm mới</Button>
-      </Space>
+      </Card>
 
-      <Table
-        rowSelection={rowSelection}
-        dataSource={filteredMethods}
-        columns={columns}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 8 }}
-        scroll={{ x: "max-content" }}
-        className="bg-white shadow rounded-lg"
-      />
-
-      {/* Modal thêm/sửa */}
+      {/* Modal Thêm/Sửa */}
       <Modal
-        title={editingMethod ? "Chỉnh sửa phương thức thanh toán" : "Thêm phương thức mới"}
+        title={editingMethod ? "Chỉnh sửa phương thức" : "Thêm phương thức mới"}
         open={isModalOpen}
         onOk={handleSave}
         onCancel={() => setIsModalOpen(false)}
         okText="Lưu"
         cancelText="Hủy"
+        centered
       >
-        <Form form={form} layout="vertical">
+        <Form form={form} layout="vertical" className="pt-4">
           <Form.Item
             name="name"
             label="Tên phương thức"
             rules={[{ required: true, message: "Vui lòng nhập tên phương thức" }]}
           >
-            <Input />
+            <Input 
+                prefix={<CreditCardOutlined className="text-gray-400"/>} 
+                placeholder="Ví dụ: Tiền mặt, Chuyển khoản ngân hàng..."
+            />
           </Form.Item>
         </Form>
       </Modal>
 
-      {/* Modal xóa nhiều */}
+      {/* Modal Xóa nhiều */}
       <Modal
-        title={`Xác nhận xóa ${selectedRowKeys.length} phương thức`}
+        title="Xác nhận xóa"
         open={isDeleteModalOpen}
         onOk={handleConfirmDelete}
         onCancel={() => setIsDeleteModalOpen(false)}
-        okText="Xóa"
+        okText="Xóa vĩnh viễn"
         cancelText="Hủy"
         okButtonProps={{ danger: true }}
+        centered
       >
-        <p>Hành động này không thể hoàn tác. Bạn có chắc chắn muốn xóa?</p>
+        <p>Bạn có chắc chắn muốn xóa <b>{selectedRowKeys.length}</b> phương thức thanh toán đã chọn?</p>
+        <p className="text-red-500 text-sm">Hành động này không thể hoàn tác và có thể ảnh hưởng đến các đơn hàng cũ.</p>
       </Modal>
     </div>
   );

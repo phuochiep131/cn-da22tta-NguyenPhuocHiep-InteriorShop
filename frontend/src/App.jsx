@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ScrollToTop from "./components/ScrollToTop";
 
+import AdminRoute from "./components/AdminRoute";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -10,6 +11,7 @@ import ProductManager from "./pages/admin/ProductManager";
 import PaymentMethodManager from "./pages/admin/PaymentMethodManager";
 import CouponManager from "./pages/admin/CouponManager";
 import OrderManager from "./pages/admin/OrderManager";
+import StatsPage from "./pages/admin/StatsPage";
 
 import Home from "./pages/user/Home";
 import Login from "./pages/user/Login";
@@ -41,16 +43,17 @@ export default function App() {
           <Route path="/payment-return" element={<PaymentReturn />} />
         </Route>
 
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="users" element={<UserManager />} />
-          <Route path="categories" element={<CategoryManager />} />
-          <Route path="products" element={<ProductManager />} />
-          <Route path="payment-methods" element={<PaymentMethodManager />} />
-          <Route path="coupons" element={<CouponManager />} />
-          <Route path="orders-manager" element={<OrderManager />} />
-          <Route path="orders" element={<div>Quản lý đơn hàng</div>} />
-          <Route path="statistics" element={<div>Trang thống kê</div>} />
+        <Route element={<AdminRoute />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<UserManager />} />
+            <Route path="categories" element={<CategoryManager />} />
+            <Route path="products" element={<ProductManager />} />
+            <Route path="payment-methods" element={<PaymentMethodManager />} />
+            <Route path="coupons" element={<CouponManager />} />
+            <Route path="orders" element={<OrderManager />} />
+            <Route path="stats" element={<StatsPage />} />
+          </Route>
         </Route>
       </Routes>
     </Router>

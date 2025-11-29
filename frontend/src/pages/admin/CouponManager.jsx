@@ -14,16 +14,26 @@ import {
   Switch,
   Row,
   Col,
+  Card,
+  Typography,
+  Tag,
+  Tooltip,
+  Badge
 } from "antd";
 import {
   EditOutlined,
   DeleteOutlined,
   SearchOutlined,
   PlusOutlined,
+  ReloadOutlined,
+  PercentageOutlined,
+  DollarOutlined
 } from "@ant-design/icons";
 import { AuthContext } from "../../context/AuthContext";
 import Cookies from "js-cookie";
 import dayjs from "dayjs";
+
+const { Title, Text } = Typography;
 
 export default function CouponManager() {
   const [coupons, setCoupons] = useState([]);
@@ -75,7 +85,12 @@ export default function CouponManager() {
   const handleAdd = () => {
     setEditingCoupon(null);
     form.resetFields();
-    form.setFieldsValue({ discountType: "percent", isActive: true });
+    form.setFieldsValue({ 
+        discountType: "percent", 
+        isActive: true,
+        startDate: dayjs(),
+        endDate: dayjs().add(7, 'day')
+    });
     setIsModalOpen(true);
   };
 
@@ -140,10 +155,7 @@ export default function CouponManager() {
   };
 
   const openDeleteModal = () => {
-    if (!selectedRowKeys.length) {
-      messageApi.warning("Vui lòng chọn ít nhất một voucher để xóa!");
-      return;
-    }
+    if (!selectedRowKeys.length) return;
     setIsDeleteModalOpen(true);
   };
 
@@ -164,11 +176,6 @@ export default function CouponManager() {
     }
   };
 
-  const handleSearch = (value) => setSearchText(value.toLowerCase());
-  const filteredCoupons = coupons.filter((c) =>
-    c.code?.toLowerCase().includes(searchText)
-  );
-
   const toggleStatus = async (id, currentStatus) => {
     try {
       await fetch(`http://localhost:8080/api/coupons/${id}/status`, {
@@ -181,57 +188,107 @@ export default function CouponManager() {
       });
       message.success("Cập nhật trạng thái thành công");
       fetchCoupons();
-    } catch (error) {
+    } catch {
       message.error("Cập nhật trạng thái thất bại");
-      console.error(error);
     }
   };
+
+  const handleSearch = (e) => setSearchText(e.target.value.toLowerCase());
+  
+  const filteredCoupons = coupons.filter((c) =>
+    c.code?.toLowerCase().includes(searchText)
+  );
 
   const rowSelection = { selectedRowKeys, onChange: setSelectedRowKeys };
 
   const columns = [
-    { title: "ID", dataIndex: "couponId", key: "couponId" },
-    { title: "Mã", dataIndex: "code", key: "code" },
-    { title: "Mô tả", dataIndex: "description", key: "description" },
-    { title: "Loại", dataIndex: "discountType", key: "discountType" },
-    { title: "Giá trị", dataIndex: "discountValue", key: "discountValue" },
+    { 
+        title: "Mã Code", 
+        dataIndex: "code", 
+        fixed: 'left',
+        width: 150,
+        render: (text) => <Tag color="geekblue" className="font-mono text-base px-2 py-1 uppercase">{text}</Tag>
+    },
+    { 
+        title: "Loại giảm giá", 
+        dataIndex: "discountType", 
+        width: 140,
+        render: (type) => (
+            type === 'percent' 
+            ? <Tag color="purple" icon={<PercentageOutlined />}>Phần trăm</Tag> 
+            : <Tag color="green" icon={<DollarOutlined />}>Tiền mặt</Tag>
+        )
+    },
+    { 
+        title: "Giá trị", 
+        dataIndex: "discountValue", 
+        width: 120,
+        render: (val, record) => (
+            <span className="font-bold text-red-600">
+                {val.toLocaleString()} {record.discountType === 'percent' ? '%' : 'đ'}
+            </span>
+        )
+    },
     {
       title: "Đơn tối thiểu",
       dataIndex: "minOrderAmount",
-      key: "minOrderAmount",
+      width: 150,
+      responsive: ['md'],
+      render: (val) => val ? `${val.toLocaleString()} đ` : '0 đ'
     },
-    { title: "Giảm tối đa", dataIndex: "maxDiscount", key: "maxDiscount" },
-    { title: "Ngày bắt đầu", dataIndex: "startDate" },
-    { title: "Ngày kết thúc", dataIndex: "endDate" },
-    { title: "Giới hạn", dataIndex: "usageLimit", key: "usageLimit" },
-    { title: "Đã dùng", dataIndex: "usedCount", key: "usedCount" },
+    { 
+        title: "Thời gian áp dụng", 
+        width: 220,
+        responsive: ['lg'],
+        render: (_, record) => (
+            <div className="flex flex-col text-xs text-gray-500">
+                <span>Bắt đầu: {dayjs(record.startDate).format("DD/MM/YYYY")}</span>
+                <span>Kết thúc: {dayjs(record.endDate).format("DD/MM/YYYY")}</span>
+            </div>
+        )
+    },
+    { 
+        title: "Sử dụng", 
+        width: 120,
+        render: (_, record) => (
+            <div className="flex items-center gap-1">
+                <span className={record.usedCount >= record.usageLimit ? "text-red-500 font-bold" : ""}>
+                    {record.usedCount}
+                </span>
+                <span className="text-gray-400">/</span>
+                <span>{record.usageLimit}</span>
+            </div>
+        )
+    },
     {
       title: "Trạng thái",
       dataIndex: "isActive",
-      render: (_, record) => (
-        <Button
-          type={record.isActive ? "primary" : "default"}
-          onClick={() => toggleStatus(record.couponId, record.isActive)}
-        >
-          {record.isActive ? "Hoạt động" : "Ngừng"}
-        </Button>
+      width: 100,
+      render: (isActive, record) => (
+        <Switch 
+            checked={isActive} 
+            onChange={() => toggleStatus(record.couponId, isActive)} 
+            size="small"
+        />
       ),
     },
-    { title: "Ngày tạo", dataIndex: "createdAt", key: "createdAt" },
     {
-      title: "Thao tác",
+      title: "",
+      fixed: 'right',
+      width: 100,
       render: (_, record) => (
         <Space>
-          <Button icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-            Sửa
-          </Button>
+          <Tooltip title="Chỉnh sửa">
+            <Button type="text" icon={<EditOutlined className="text-blue-600"/>} onClick={() => handleEdit(record)} />
+          </Tooltip>
           <Popconfirm
-            title="Bạn có chắc chắn muốn xóa voucher này?"
+            title="Xóa voucher này?"
             onConfirm={() => handleDelete(record.couponId)}
+            okText="Xóa" cancelText="Hủy" okButtonProps={{danger: true}}
           >
-            <Button danger icon={<DeleteOutlined />}>
-              Xóa
-            </Button>
+            <Tooltip title="Xóa">
+                <Button type="text" danger icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -239,158 +296,164 @@ export default function CouponManager() {
   ];
 
   return (
-    <div className="p-4 bg-gray-50 w-full h-full box-border">
+    <div className="p-4 md:p-6 bg-slate-50 min-h-screen">
       {contextHolder}
-      <h2 className="text-2xl font-semibold mb-6">Quản lý Voucher / Coupon</h2>
+      
+      <Card bordered={false} className="shadow-sm">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div>
+                <Title level={4} style={{ margin: 0 }}>Quản lý Voucher</Title>
+                <Text type="secondary">{coupons.length} mã giảm giá đang có hiệu lực</Text>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                <Input
+                  placeholder="Tìm mã code..."
+                  prefix={<SearchOutlined className="text-gray-400" />}
+                  onChange={handleSearch}
+                  className="w-full sm:w-64"
+                />
+                
+                {selectedRowKeys.length > 0 && (
+                     <Button danger icon={<DeleteOutlined />} onClick={openDeleteModal}>
+                       Xóa ({selectedRowKeys.length})
+                     </Button>
+                )}
+                
+                <Button icon={<ReloadOutlined />} onClick={fetchCoupons} />
+                
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} className="bg-indigo-600">
+                  Thêm mới
+                </Button>
+            </div>
+        </div>
 
-      <Space className="mb-4 flex-wrap" wrap>
-        <Input
-          placeholder="Tìm kiếm theo mã"
-          prefix={<SearchOutlined />}
-          onChange={(e) => handleSearch(e.target.value)}
-          className="w-64"
+        {/* Table Section */}
+        <Table
+          rowSelection={rowSelection}
+          dataSource={filteredCoupons}
+          columns={columns}
+          rowKey="couponId"
+          loading={loading}
+          pagination={{ pageSize: 8, showSizeChanger: true }}
+          scroll={{ x: 1000 }}
         />
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          Thêm voucher
-        </Button>
-        <Button
-          danger
-          disabled={!selectedRowKeys.length}
-          onClick={openDeleteModal}
-        >
-          Xóa nhiều
-        </Button>
-        <Button onClick={fetchCoupons}>Làm mới</Button>
-      </Space>
+      </Card>
 
-      <Table
-        rowSelection={rowSelection}
-        dataSource={filteredCoupons}
-        columns={columns}
-        rowKey="couponId"
-        loading={loading}
-        pagination={{ pageSize: 8 }}
-        scroll={{ x: "max-content" }}
-        className="bg-white shadow rounded-lg"
-      />
-
-      {/* Modal Thêm/Sửa Voucher */}
+      {/* Modal Thêm/Sửa */}
       <Modal
-        title={editingCoupon ? "Chỉnh sửa voucher" : "Thêm voucher mới"}
+        title={editingCoupon ? "Cập nhật Voucher" : "Tạo Voucher mới"}
         open={isModalOpen}
         onOk={handleSave}
         onCancel={() => setIsModalOpen(false)}
-        okText="Lưu"
-        cancelText="Hủy"
-        width={900}
+        okText="Lưu lại"
+        cancelText="Hủy bỏ"
+        width={800}
+        centered
       >
-        <Form form={form} layout="vertical">
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} md={6}>
+        <Form form={form} layout="vertical" className="pt-4">
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
               <Form.Item
                 name="code"
-                label="Mã voucher"
-                rules={[{ required: true }]}
+                label="Mã Voucher (Code)"
+                rules={[{ required: true, message: "Vui lòng nhập mã" }]}
               >
-                <Input />
+                <Input placeholder="VD: SALE50, TET2025" className="uppercase font-mono"/>
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item name="description" label="Mô tả">
-                <Input />
+            <Col xs={24} sm={12}>
+              <Form.Item name="description" label="Mô tả ngắn">
+                <Input placeholder="VD: Giảm giá nhân dịp tết..." />
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item
-                name="discountType"
-                label="Loại giảm"
-                rules={[{ required: true }]}
-              >
+            <Col xs={24} sm={12}>
+              <Form.Item name="discountType" label="Loại giảm giá" rules={[{ required: true }]}>
                 <Select>
-                  <Select.Option value="percent">Phần trăm</Select.Option>
+                  <Select.Option value="percent">Phần trăm (%)</Select.Option>
+                  {/* Nếu backend hỗ trợ fixed amount thì mở comment dưới */}
+                  {/* <Select.Option value="fixed">Số tiền cố định (VNĐ)</Select.Option> */}
                 </Select>
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12}>
               <Form.Item
                 name="discountValue"
                 label="Giá trị giảm"
                 rules={[{ required: true }]}
+                help="Nhập số % hoặc số tiền tùy theo loại giảm giá"
               >
                 <InputNumber className="w-full" min={0} />
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={12} sm={8}>
               <Form.Item name="minOrderAmount" label="Đơn tối thiểu">
-                <InputNumber className="w-full" min={0} />
+                <InputNumber 
+                    className="w-full" 
+                    min={0} 
+                    formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    parser={value => value.replace(/\$\s?|(,*)/g, '')}
+                />
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={12} sm={8}>
               <Form.Item name="maxDiscount" label="Giảm tối đa">
+                <InputNumber 
+                    className="w-full" 
+                    min={0}
+                    formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} 
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={8}>
+              <Form.Item name="usageLimit" label="Tổng lượt dùng">
                 <InputNumber className="w-full" min={0} />
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item
-                name="startDate"
-                label="Ngày bắt đầu"
-                rules={[{ required: true }]}
-              >
-                <DatePicker className="w-full" />
+            <Col xs={24} sm={12}>
+              <Form.Item name="startDate" label="Ngày bắt đầu" rules={[{ required: true }]}>
+                <DatePicker className="w-full" showTime format="YYYY-MM-DD HH:mm" />
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item
-                name="endDate"
-                label="Ngày kết thúc"
-                rules={[{ required: true }]}
-              >
-                <DatePicker className="w-full" />
+            <Col xs={24} sm={12}>
+              <Form.Item name="endDate" label="Ngày kết thúc" rules={[{ required: true }]}>
+                <DatePicker className="w-full" showTime format="YYYY-MM-DD HH:mm" />
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item name="usageLimit" label="Số lượt dùng tối đa">
-                <InputNumber className="w-full" min={0} />
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item name="usedCount" label="Đã dùng">
-                <InputNumber className="w-full" disabled />
-              </Form.Item>
-            </Col>
-
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item
-                name="isActive"
-                label="Trạng thái"
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
+            <Col span={24}>
+                <div className="bg-gray-50 p-3 rounded flex items-center justify-between">
+                    <span>Kích hoạt ngay sau khi tạo?</span>
+                    <Form.Item name="isActive" valuePropName="checked" noStyle>
+                        <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
+                    </Form.Item>
+                </div>
             </Col>
           </Row>
         </Form>
       </Modal>
 
+      {/* Modal Xóa */}
       <Modal
-        title={`Xác nhận xóa ${selectedRowKeys.length} voucher`}
+        title="Xác nhận xóa"
         open={isDeleteModalOpen}
         onOk={handleConfirmDelete}
         onCancel={() => setIsDeleteModalOpen(false)}
-        okText="Xóa"
+        okText="Xóa vĩnh viễn"
         cancelText="Hủy"
         okButtonProps={{ danger: true }}
       >
-        <p>Hành động này không thể hoàn tác. Bạn chắc chắn chứ?</p>
+        <p>Bạn có chắc chắn muốn xóa <b>{selectedRowKeys.length}</b> voucher đã chọn không?</p>
+        <p className="text-red-500 text-sm">Hành động này không thể hoàn tác.</p>
       </Modal>
     </div>
   );

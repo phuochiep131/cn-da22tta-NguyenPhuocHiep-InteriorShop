@@ -245,7 +245,7 @@ export default function Register() {
         ></div>
         <div className="relative z-10 text-center px-10">
           <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">
-            Interior Shop
+            NPH STORE
           </h1>
           <p className="text-gray-200 text-lg font-light">
             Kiến tạo không gian sống đẳng cấp và tiện nghi cho ngôi nhà của bạn.

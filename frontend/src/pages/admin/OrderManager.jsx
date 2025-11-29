@@ -8,15 +8,23 @@ import {
   message,
   Popconfirm,
   Select,
+  Card,
+  Typography,
+  Tag,
+  Divider,
+  Descriptions,
 } from "antd";
 import {
   SearchOutlined,
   ReloadOutlined,
   EyeOutlined,
   DeleteOutlined,
+  ShoppingCartOutlined,
 } from "@ant-design/icons";
 import Cookies from "js-cookie";
 import { AuthContext } from "../../context/AuthContext";
+
+const { Title, Text } = Typography;
 
 export default function OrderManager() {
   const [orders, setOrders] = useState([]);
@@ -24,22 +32,23 @@ export default function OrderManager() {
   const [loading, setLoading] = useState(false);
   const [detailOrder, setDetailOrder] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [messageApi, contextHolder] = message.useMessage();
 
   const token = Cookies.get("jwt");
   const { user } = useContext(AuthContext);
 
   const statusOptions = [
-    { value: "pending", label: "Chờ xác nhận", color: "#faad14" },
-    { value: "processing", label: "Vận chuyển", color: "#1890ff" },
-    { value: "shipping", label: "Chờ giao hàng", color: "#2db7f5" },
-    { value: "delivered", label: "Đã giao", color: "#52c41a" },
-    { value: "cancelled", label: "Đã hủy", color: "#f5222d" },
+    { value: "pending", label: "Chờ xác nhận", color: "orange" },
+    { value: "processing", label: "Vận chuyển", color: "blue" },
+    { value: "shipping", label: "Chờ giao hàng", color: "cyan" },
+    { value: "delivered", label: "Đã giao", color: "green" },
+    { value: "cancelled", label: "Đã hủy", color: "red" },
   ];
 
   const paymentStatusOptions = [
-    { value: "Pending", label: "Đang chờ", color: "#faad14" },
-    { value: "Completed", label: "Đã thanh toán", color: "#52c41a" },
-    { value: "Failed", label: "Thất bại", color: "#f5222d" },
+    { value: "Pending", label: "Chờ thanh toán", color: "gold" },
+    { value: "Completed", label: "Đã thanh toán", color: "success" },
+    { value: "Failed", label: "Thất bại", color: "error" },
   ];
 
   useEffect(() => {
@@ -53,13 +62,11 @@ export default function OrderManager() {
       const res = await fetch("http://localhost:8080/api/orders", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (!res.ok) throw new Error();
       const data = await res.json();
-      console.log(data);
       setOrders(data);
     } catch {
-      message.error("Không thể tải danh sách đơn hàng");
+      messageApi.error("Không thể tải danh sách đơn hàng");
     } finally {
       setLoading(false);
     }
@@ -79,41 +86,21 @@ export default function OrderManager() {
           body: newStatus,
         }
       );
-
       if (!res.ok) throw new Error();
-
       setOrders((prev) =>
         prev.map((o) =>
           o.orderId === orderId ? { ...o, orderStatus: newStatus } : o
         )
       );
-
-      message.success("Cập nhật trạng thái thành công!");
+      messageApi.success("Cập nhật trạng thái thành công!");
     } catch {
-      message.error("Không thể cập nhật trạng thái");
+      messageApi.error("Không thể cập nhật trạng thái");
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteOrder = async (orderId) => {
-    try {
-      const res = await fetch(`http://localhost:8080/api/orders/${orderId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) throw new Error();
-      message.success("Xóa đơn hàng thành công");
-      fetchOrders();
-    } catch {
-      message.error("Không thể xóa đơn hàng");
-    }
-  };
-
   const updatePaymentStatus = async (paymentId, newStatus) => {
-    const token = Cookies.get("jwt");
-
     try {
       const res = await fetch(
         `http://localhost:8080/api/payments/${paymentId}/status`,
@@ -126,11 +113,8 @@ export default function OrderManager() {
           body: JSON.stringify({ paymentStatus: newStatus }),
         }
       );
-
       if (!res.ok) throw new Error();
-
-      message.success("Cập nhật trạng thái thanh toán thành công!");
-
+      messageApi.success("Cập nhật thanh toán thành công!");
       setOrders((prev) =>
         prev.map((order) =>
           order.payment?.paymentId === paymentId
@@ -141,108 +125,118 @@ export default function OrderManager() {
             : order
         )
       );
-    } catch (err) {
-      console.error(err);
-      message.error("Không thể cập nhật trạng thái thanh toán!");
+    } catch {
+      messageApi.error("Không thể cập nhật thanh toán!");
+    }
+  };
+
+  const deleteOrder = async (orderId) => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/orders/${orderId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error();
+      messageApi.success("Xóa đơn hàng thành công");
+      fetchOrders();
+    } catch {
+      messageApi.error("Không thể xóa đơn hàng");
     }
   };
 
   const columns = [
     {
-      title: "Mã đơn hàng",
-      dataIndex: "orderId",
-    },
-    {
-      title: "Hình ảnh",
-      dataIndex: "orderDetails",
-      render: (details) =>
-        details && details.length > 0 ? (
-          <img
-            src={details[0].product.imageUrl}
-            alt="product"
-            style={{
-              width: 60,
-              height: 60,
-              objectFit: "cover",
-              borderRadius: 6,
-              border: "1px solid #ddd",
-            }}
-          />
-        ) : (
-          "—"
-        ),
-    },
-    {
-      title: "Sản phẩm",
-      dataIndex: "orderDetails",
-      render: (details) =>
-        details && details.length > 0
-          ? details.map((d) => d.product.productName).join(", ")
-          : "—",
-    },
-    {
-      title: "Số lượng",
-      dataIndex: "orderDetails",
-      render: (details) =>
-        details && details.length > 0
-          ? details.reduce((total, item) => total + item.quantity, 0)
-          : 0,
+      title: "Đơn hàng",
+      width: 280,
+      render: (_, record) => (
+        <div className="flex gap-3 items-center">
+          {record.orderDetails?.[0]?.product?.imageUrl ? (
+            <img
+              src={record.orderDetails[0].product.imageUrl}
+              className="w-12 h-12 rounded border object-cover"
+            />
+          ) : (
+            <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center border">
+              <ShoppingCartOutlined />
+            </div>
+          )}
+          <div className="flex flex-col">
+            <span className="font-mono text-xs text-gray-500">
+              {record.orderId}
+            </span>
+            <span className="font-medium text-gray-800">
+              {new Date(record.orderDate).toLocaleDateString("vi-VN")}
+            </span>
+          </div>
+        </div>
+      ),
     },
     {
       title: "Tổng tiền",
       dataIndex: "totalAmount",
-      render: (v) => v.toLocaleString() + " ₫",
+      width: 150,
+      render: (v) => (
+        <span className="font-semibold text-indigo-600">
+          {v.toLocaleString()} ₫
+        </span>
+      ),
     },
     {
-      title: "Trạng thái đặt hàng",
+      title: "Trạng thái đơn",
       dataIndex: "orderStatus",
       render: (s, record) => {
-        let statusValue;
+        let statusValue = s;
         try {
-          const parsed = JSON.parse(s);
-          statusValue = parsed.status;
+          statusValue = JSON.parse(s).status;
         } catch {
-          statusValue = s;
-        }
-
+          //
+        } 
         return (
           <Select
             value={statusValue}
             onChange={(val) => updateStatus(record.orderId, val)}
-            style={{ width: 150 }}
-            options={statusOptions.map((s) => ({
-              value: s.value,
-              label: <span style={{ color: s.color }}>{s.label}</span>,
-            }))}
-          />
+            style={{ width: 140 }}
+            size="small"
+            variant="filled"
+          >
+            {statusOptions.map((opt) => (
+              <Select.Option key={opt.value} value={opt.value}>
+                <Tag color={opt.color} style={{ margin: 0 }} bordered={false}>
+                  {opt.label}
+                </Tag>
+              </Select.Option>
+            ))}
+          </Select>
         );
       },
     },
     {
-      title: "Trạng thái thanh toán",
+      title: "Thanh toán",
       dataIndex: "payment",
       render: (payment) =>
         payment ? (
           <Select
             value={payment.paymentStatus}
-            style={{ width: 150 }}
-            options={paymentStatusOptions.map((p) => ({
-              value: p.value,
-              label: <span style={{ color: p.color }}>{p.label}</span>,
-            }))}
+            style={{ width: 140 }}
+            size="small"
             onChange={(val) => updatePaymentStatus(payment.paymentId, val)}
-          />
+          >
+            {paymentStatusOptions.map((opt) => (
+              <Select.Option key={opt.value} value={opt.value}>
+                <Tag color={opt.color} style={{ margin: 0 }} bordered={false}>
+                  {opt.label}
+                </Tag>
+              </Select.Option>
+            ))}
+          </Select>
         ) : (
           "—"
         ),
     },
     {
-      title: "Ngày tạo đơn",
-      dataIndex: "orderDate",
-      render: (v) => new Date(v).toLocaleString(),
-    },
-    {
-      title: "Thao tác",
+      title: "",
+      fixed: "right",
+      width: 100,
       render: (_, record) => (
         <Space>
           <Button
@@ -251,17 +245,12 @@ export default function OrderManager() {
               setDetailOrder(record);
               setIsDetailOpen(true);
             }}
-          >
-            Xem
-          </Button>
-
+          />
           <Popconfirm
-            title="Bạn có chắc chắn muốn xóa đơn hàng này?"
+            title="Xóa đơn này?"
             onConfirm={() => deleteOrder(record.orderId)}
           >
-            <Button danger icon={<DeleteOutlined />}>
-              Xóa
-            </Button>
+            <Button danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
       ),
@@ -275,129 +264,116 @@ export default function OrderManager() {
   );
 
   return (
-    <div className="p-4 bg-gray-50 w-full h-full">
-      <h2 className="text-2xl font-semibold mb-6">Quản lý Đơn hàng</h2>
+    <div className="p-4 md:p-6 bg-slate-50 min-h-screen">
+      {contextHolder}
+      <Card bordered={false} className="shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <Title level={4} style={{ margin: 0 }}>
+              Quản lý Đơn hàng
+            </Title>
+            <Text type="secondary">
+              {orders.length} đơn hàng trong hệ thống
+            </Text>
+          </div>
+          <div className="flex gap-3">
+            <Input
+              placeholder="Tìm mã đơn, User ID..."
+              prefix={<SearchOutlined />}
+              onChange={(e) => setSearchText(e.target.value.toLowerCase())}
+              className="w-full sm:w-64"
+            />
+            <Button icon={<ReloadOutlined />} onClick={fetchOrders} />
+          </div>
+        </div>
 
-      <Space className="mb-4" wrap>
-        <Input
-          placeholder="Tìm theo mã đơn hoặc userId"
-          prefix={<SearchOutlined />}
-          className="w-64"
-          onChange={(e) => setSearchText(e.target.value.toLowerCase())}
+        <Table
+          rowKey="orderId"
+          dataSource={filteredOrders}
+          columns={columns}
+          loading={loading}
+          pagination={{ pageSize: 10 }}
+          scroll={{ x: 800 }}
         />
+      </Card>
 
-        <Button icon={<ReloadOutlined />} onClick={fetchOrders}>
-          Làm mới
-        </Button>
-      </Space>
-
-      <Table
-        rowKey="orderId"
-        dataSource={filteredOrders}
-        columns={columns}
-        loading={loading}
-        pagination={{ pageSize: 10 }}
-        className="bg-white shadow rounded-lg"
-      />
-
+      {/* Modal Chi tiết */}
       <Modal
-        title="Chi tiết đơn hàng"
+        title={<span className="text-lg font-semibold">Chi tiết đơn hàng</span>}
         open={isDetailOpen}
         onCancel={() => setIsDetailOpen(false)}
-        footer={null}
+        footer={[
+          <Button key="close" onClick={() => setIsDetailOpen(false)}>
+            Đóng
+          </Button>,
+        ]}
         width={700}
+        centered
       >
         {detailOrder && (
-          <div>
-            <p>
-              <b>Mã chi tiết đơn hàng:</b>{" "}
-              {detailOrder.orderDetails?.map((d) => d.orderDetailId).join(", ")}
-            </p>
-            <p>
-              <b>Địa chỉ nhận hàng:</b> {detailOrder.shippingAddress}
-            </p>
-            <p>
-              <b>Phương thức thanh toán:</b>{" "}
-              {detailOrder.paymentMethodId === "PM001"
-                ? "Thanh toán khi nhận hàng (COD)"
-                : detailOrder.paymentMethodId === "PM002"
-                ? "VNPay"
-                : "Không xác định"}
-            </p>
+          <div className="space-y-4 pt-2">
+            <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+              <div>
+                <Text type="secondary" className="block text-xs uppercase">
+                  Mã đơn hàng
+                </Text>
+                <Text strong copyable>
+                  {detailOrder.orderId}
+                </Text>
+              </div>
+              <div>
+                <Text type="secondary" className="block text-xs uppercase">
+                  Ngày đặt
+                </Text>
+                <Text>{new Date(detailOrder.orderDate).toLocaleString()}</Text>
+              </div>
+              <div className="col-span-2">
+                <Text type="secondary" className="block text-xs uppercase">
+                  Địa chỉ giao hàng
+                </Text>
+                <Text>{detailOrder.shippingAddress}</Text>
+              </div>
+            </div>
 
-            <h3 className="mt-4 mb-2 font-semibold">Cập nhật trạng thái</h3>
-            <Select
-              value={detailOrder.orderStatus}
-              style={{ width: 200 }}
-              options={statusOptions.map((s) => ({
-                value: s.value,
-                label: <span style={{ color: s.color }}>{s.label}</span>,
-              }))}
-              onChange={(val) =>
-                setDetailOrder({ ...detailOrder, orderStatus: val })
-              }
-            />
-            <Button
-              type="primary"
-              className="ml-3"
-              onClick={() =>
-                updateStatus(detailOrder.orderId, detailOrder.orderStatus)
-              }
-            >
-              Lưu
-            </Button>
+            <Divider orientation="left" style={{ margin: "12px 0" }}>
+              Sản phẩm
+            </Divider>
 
-            <h3 className="mt-4 mb-2 font-semibold">
-              Cập nhật trạng thái thanh toán
-            </h3>
-            <Select
-              value={detailOrder.payment?.paymentStatus || "Pending"}
-              style={{ width: 200 }}
-              options={paymentStatusOptions.map((p) => ({
-                value: p.value,
-                label: <span style={{ color: p.color }}>{p.label}</span>,
-              }))}
-              onChange={(val) =>
-                setDetailOrder({
-                  ...detailOrder,
-                  payment: { ...detailOrder.payment, paymentStatus: val },
-                })
-              }
-            />
-            <Button
-              type="primary"
-              className="ml-3"
-              onClick={() =>
-                updatePaymentStatus(
-                  detailOrder.payment.paymentId,
-                  detailOrder.payment.paymentStatus
-                )
-              }
-            >
-              Lưu
-            </Button>
+            <div className="max-h-60 overflow-y-auto pr-2 space-y-3">
+              {detailOrder.orderDetails?.map((d) => (
+                <div
+                  key={d.orderDetailId}
+                  className="flex gap-4 items-center bg-white border p-2 rounded hover:shadow-sm transition"
+                >
+                  <img
+                    src={d.product.imageUrl}
+                    className="w-16 h-16 object-cover rounded bg-gray-100"
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-800 m-0">
+                      {d.product.productName}
+                    </p>
+                    <p className="text-gray-500 text-sm m-0">
+                      Số lượng: x{d.quantity}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-indigo-600 m-0">
+                      {d.originalUnitPrice.toLocaleString()} ₫
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-            <h3 className="mt-4 mb-2 font-semibold">Sản phẩm</h3>
-            {detailOrder.orderDetails?.map((d) => (
-              <div key={d.orderDetailId} className="flex gap-3 py-2 border-b">
-                <img
-                  src={d.product.imageUrl}
-                  className="w-16 h-16 object-cover rounded"
-                />
-                <div>
-                  <p className="font-medium">{d.product.productName}</p>
-                  <p>Số lượng: {d.quantity}</p>
-                  <p>Giá: {d.originalUnitPrice.toLocaleString()} ₫</p>
+            <div className="flex justify-end pt-4 border-t">
+              <div className="text-right">
+                <Text type="secondary">Tổng thanh toán</Text>
+                <div className="text-2xl font-bold text-red-600">
+                  {detailOrder.totalAmount.toLocaleString()} ₫
                 </div>
               </div>
-            ))}
-
-            <p className="mt-4 text-right text-lg">
-              <b>Tổng:</b>{" "}
-              <span className="text-red-600">
-                {detailOrder.totalAmount.toLocaleString()} ₫
-              </span>
-            </p>
+            </div>
           </div>
         )}
       </Modal>
