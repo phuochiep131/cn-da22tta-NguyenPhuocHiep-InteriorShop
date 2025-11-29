@@ -13,8 +13,11 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -161,4 +164,126 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         return result;
     }
 
+    @Override
+    public List<Map<String, Object>> getTopCustomers() {
+        List<Object[]> results = orderRepository.findTopSpendingCustomers();
+        List<Map<String, Object>> list = new ArrayList<>();
+
+        for (Object[] row : results) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("name", row[0]);
+            item.put("email", row[1]);
+            item.put("avatar", row[2]);
+            item.put("totalSpent", row[3]);
+            list.add(item);
+        }
+        return list;
+    }
+
+    @Override
+    public List<Map<String, Object>> getRevenueStatistics(String timeRange) {
+        LocalDateTime endDate = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
+        LocalDateTime startDate;
+
+        // 1. Xử lý logic chọn thời gian
+        switch (timeRange) {
+            case "TODAY":
+                startDate = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
+                break;
+            case "3_DAYS":
+                startDate = endDate.minusDays(2); // Lấy hôm nay + 2 ngày trước
+                break;
+            case "7_DAYS":
+                startDate = endDate.minusDays(6);
+                break;
+            case "1_MONTH":
+                startDate = endDate.minusMonths(1);
+                break;
+            case "3_MONTHS":
+                startDate = endDate.minusMonths(3);
+                break;
+            default: // Mặc định 7 ngày
+                startDate = endDate.minusDays(6);
+        }
+
+        // 2. Lấy dữ liệu thô từ DB
+        List<Object[]> rawData = orderRepository.findRevenueChartData(startDate, endDate);
+
+        // 3. Map dữ liệu vào HashMap để dễ tra cứu (Key: LocalDate -> Value: Doanh thu)
+        Map<LocalDate, Map<String, Object>> dataMap = new HashMap<>();
+        for (Object[] row : rawData) {
+            LocalDate date;
+            if (row[0] instanceof java.sql.Date) {
+                date = ((java.sql.Date) row[0]).toLocalDate();
+            } else {
+                date = LocalDate.parse(row[0].toString());
+            }
+
+            BigDecimal amount = (BigDecimal) row[1];
+            Long count = (Long) row[2]; // Lấy thêm số lượng đơn
+
+            Map<String, Object> values = new HashMap<>();
+            values.put("revenue", amount);
+            values.put("count", count);
+
+            dataMap.put(date, values);
+        }
+
+// Loop để fill data
+        List<Map<String, Object>> result = new ArrayList<>();
+        LocalDate current = startDate.toLocalDate();
+        LocalDate end = endDate.toLocalDate();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM");
+
+        while (!current.isAfter(end)) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("label", current.format(formatter));
+
+            if (dataMap.containsKey(current)) {
+                item.put("revenue", dataMap.get(current).get("revenue"));
+                item.put("orderCount", dataMap.get(current).get("count"));
+            } else {
+                item.put("revenue", BigDecimal.ZERO);
+                item.put("orderCount", 0L);
+            }
+            result.add(item);
+            current = current.plusDays(1);
+        }
+        return result;
+    }
+
+    @Override
+    public List<Map<String, Object>> getPeakHoursStats() {
+        List<Object[]> results = orderRepository.findOrdersByHour();
+        // Tạo map mặc định 0-23h đều bằng 0
+        Map<Integer, Long> hourMap = new HashMap<>();
+        for (int i = 0; i < 24; i++) hourMap.put(i, 0L);
+
+        for (Object[] row : results) {
+            hourMap.put((Integer) row[0], (Long) row[1]);
+        }
+
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (int i = 0; i < 24; i++) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("hour", i + "h"); // Label: 1h, 2h...
+            item.put("value", hourMap.get(i));
+            list.add(item);
+        }
+        return list;
+    }
+
+    @Override
+    public List<Map<String, Object>> getLowStockProducts() {
+        // Lấy 10 sản phẩm thấp nhất
+        List<Object[]> results = productRepository.findLowStockProducts(PageRequest.of(0, 10));
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Object[] row : results) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("name", row[0]);
+            item.put("stock", row[1]);
+            list.add(item);
+        }
+        return list;
+    }
 }

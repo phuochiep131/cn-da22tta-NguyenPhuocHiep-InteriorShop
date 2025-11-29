@@ -15,4 +15,12 @@ public interface AdminDashboardService {
 
     //Uoc tinh doanh thu vs thuc te
     List<Map<String, Object>> getRevenueComparison();
+
+    //Khach hang tiem nang
+    List<Map<String, Object>> getTopCustomers();
+
+    List<Map<String, Object>> getRevenueStatistics(String timeRange);
+
+    List<Map<String, Object>> getPeakHoursStats();
+    List<Map<String, Object>> getLowStockProducts();
 }

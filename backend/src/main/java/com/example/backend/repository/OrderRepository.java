@@ -49,4 +49,34 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 			"GROUP BY DATE_FORMAT(o.order_date, 'T%m'), YEAR(o.order_date), MONTH(o.order_date) " +
 			"ORDER BY YEAR(o.order_date), MONTH(o.order_date)", nativeQuery = true)
 	List<RevenueComparisonProjection> getRevenueComparison();
+
+	@Query(value = "SELECT u.full_name, u.email, u.avatar, SUM(o.total_amount) as total_spent " +
+			"FROM orders o " +
+			"JOIN users u ON o.user_id = u.user_id " +
+			"WHERE o.is_order = 1 " +
+			"AND EXISTS (SELECT 1 FROM payments p WHERE p.order_id = o.order_id " +
+			"AND p.payment_status = 'Completed') " +
+			"GROUP BY u.user_id, u.full_name, u.email, u.avatar " +
+			"ORDER BY total_spent DESC " +
+			"LIMIT 5", nativeQuery = true)
+	List<Object[]> findTopSpendingCustomers();
+
+	@Query("SELECT DATE(o.orderDate), SUM(o.totalAmount), COUNT(o) " +
+			"FROM Order o " +
+			"JOIN Payment p ON p.order = o " +
+			"WHERE o.isOrder = true " +
+			"AND p.paymentStatus = 'Completed' " +
+			"AND o.orderDate BETWEEN :startDate AND :endDate " +
+			"GROUP BY DATE(o.orderDate) " +
+			"ORDER BY DATE(o.orderDate) ASC")
+	List<Object[]> findRevenueChartData(@Param("startDate") LocalDateTime startDate,
+										@Param("endDate") LocalDateTime endDate);
+
+	// Lấy số lượng đơn hàng theo từng khung giờ trong ngày (0-23h)
+	@Query("SELECT HOUR(o.orderDate) as hour, COUNT(o) as count " +
+			"FROM Order o " +
+			"WHERE o.isOrder = true " +
+			"GROUP BY HOUR(o.orderDate) " +
+			"ORDER BY HOUR(o.orderDate) ASC")
+	List<Object[]> findOrdersByHour();
 }

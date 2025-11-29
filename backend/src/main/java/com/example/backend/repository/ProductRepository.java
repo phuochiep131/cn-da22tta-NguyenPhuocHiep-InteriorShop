@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 
 @Repository
@@ -16,4 +17,10 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 
 	@Query("SELECT SUM(p.quantity) FROM Product p")
 	Long sumTotalStock();
+
+	// Lấy top 5 sản phẩm có số lượng < 10
+	@Query("SELECT p.productName, p.quantity FROM Product p " +
+			"WHERE p.quantity < 10 " +
+			"ORDER BY p.quantity ASC")
+	List<Object[]> findLowStockProducts(Pageable pageable);
 }
