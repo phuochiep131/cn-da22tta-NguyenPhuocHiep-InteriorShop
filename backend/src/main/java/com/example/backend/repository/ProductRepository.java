@@ -18,9 +18,11 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 	@Query("SELECT SUM(p.quantity) FROM Product p")
 	Long sumTotalStock();
 
-	// Lấy top 5 sản phẩm có số lượng < 10
 	@Query("SELECT p.productName, p.quantity FROM Product p " +
 			"WHERE p.quantity < 10 " +
 			"ORDER BY p.quantity ASC")
 	List<Object[]> findLowStockProducts(Pageable pageable);
+
+	@Query(value = "SELECT * FROM products WHERE quantity > 0 LIMIT 20", nativeQuery = true)
+	List<Product> findProductsForChatbot();
 }

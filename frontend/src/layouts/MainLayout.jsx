@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import Chatbot from "../components/Chatbot"; // <--- 1. Import Chatbot
 import { Outlet } from "react-router-dom";
-import { ArrowUp } from "lucide-react"; // Import icon mũi tên
+import { ArrowUp } from "lucide-react";
 
 export default function MainLayout() {
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -18,8 +19,6 @@ export default function MainLayout() {
     };
 
     window.addEventListener("scroll", handleScroll);
-
-    // Cleanup event listener khi component unmount
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -46,12 +45,18 @@ export default function MainLayout() {
       {/* Footer tràn viền */}
       <Footer />
 
-      {/* NÚT CUỘN VỀ ĐẦU TRANG */}
+      {/* --- KHU VỰC CÁC WIDGET NỔI --- */}
+      
+      {/* 2. CHATBOT AI */}
+      {/* Component này đã được định vị fixed bottom-24 right-8 bên trong nó */}
+      <Chatbot />
+
+      {/* 3. NÚT CUỘN VỀ ĐẦU TRANG */}
       <button
         onClick={scrollToTop}
-        className={`fixed bottom-8 right-8 z-50 p-3 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+        className={`fixed bottom-8 right-8 z-40 p-3 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
           showScrollTop
-            ? "bg-blue-600 text-white opacity-100 translate-y-0"
+            ? "bg-white text-blue-600 border border-blue-100 opacity-100 translate-y-0"
             : "bg-transparent text-transparent opacity-0 translate-y-10 pointer-events-none"
         }`}
         aria-label="Về đầu trang"
