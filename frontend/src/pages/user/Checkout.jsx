@@ -26,7 +26,7 @@ export default function Checkout() {
   const token = Cookies.get("jwt");
 
   // Payment
-  const [paymentMethod, setPaymentMethod] = useState("PM001");
+  const [paymentMethod, setPaymentMethod] = useState(null);
   const [note, setNote] = useState("");
   const [paymentMethods, setPaymentMethods] = useState([]);
 
@@ -188,6 +188,8 @@ export default function Checkout() {
     const selectedAddress = addresses.find((a) => a.id === selectedAddressId);
     if (!selectedAddress)
       return messageApi.warning("Vui lòng chọn địa chỉ nhận hàng!");
+    if (!paymentMethod)
+      return messageApi.warning("Vui lòng chọn phương thức thanh toán!");
     if (!productsToPay.length)
       return messageApi.warning("Không có sản phẩm để thanh toán!");
 
