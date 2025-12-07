@@ -28,6 +28,12 @@ public class CouponController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/active")
+    public ResponseEntity<List<Coupon>> getActiveCoupons() {
+        List<Coupon> coupons = couponService.getActiveCoupons();
+        return ResponseEntity.ok(coupons);
+    }
+
     @PostMapping
     public Coupon createCoupon(@RequestBody Coupon coupon) {
         return couponService.createCoupon(coupon);

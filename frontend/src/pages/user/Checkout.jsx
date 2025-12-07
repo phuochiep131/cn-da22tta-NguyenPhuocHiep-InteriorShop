@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react"; // [UPDATE] Thêm useContext
 import { message, Modal, Input, Divider, Button } from "antd";
 import {
   MapPin,
@@ -18,12 +18,22 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Cookies from "js-cookie";
+import { AuthContext } from "../../context/AuthContext"; // [UPDATE] Import AuthContext
+
+// --- HÀM KIỂM TRA HẠN SỬ DỤNG ---
+const isCouponExpired = (endDate) => {
+  if (!endDate) return false;
+  return new Date().getTime() > new Date(endDate).getTime();
+};
 
 export default function Checkout() {
   const { state } = useLocation();
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
   const token = Cookies.get("jwt");
+
+  // [UPDATE] Lấy thông tin user từ AuthContext
+  const { user } = useContext(AuthContext);
 
   // Payment
   const [paymentMethod, setPaymentMethod] = useState(null);
@@ -36,8 +46,6 @@ export default function Checkout() {
   const [couponValue, setCouponValue] = useState(0);
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [tempSelectedCouponId, setTempSelectedCouponId] = useState(null);
-
-  // State mới cho việc nhập mã thủ công
   const [manualCouponCode, setManualCouponCode] = useState("");
 
   // Address
@@ -54,6 +62,26 @@ export default function Checkout() {
   const [singleProduct, setSingleProduct] = useState(state?.product || null);
   const [items, setItems] = useState(state?.order?.orderDetails || []);
   const [oldOrderIds, setOldOrderIds] = useState(state?.oldOrderIds || []);
+
+  // [UPDATE] useEffect để load thông tin user vào danh sách địa chỉ
+  useEffect(() => {
+    if (user) {
+      // Kiểm tra xem user có thông tin cơ bản không để tạo địa chỉ mặc định
+      // Lưu ý: Tên trường khớp với API trả về (thường là camelCase so với DB snake_case)
+      const defaultAddress = {
+        id: 1, // ID mặc định cho địa chỉ chính
+        name: user.fullName || "", // Mapping từ full_name
+        phone: user.phoneNumber || "", // Mapping từ phone_number
+        address: user.address || "", // Mapping từ address
+      };
+
+      // Chỉ set nếu có ít nhất tên hoặc số điện thoại
+      if (defaultAddress.name || defaultAddress.phone) {
+        setAddresses([defaultAddress]);
+        setSelectedAddressId(1);
+      }
+    }
+  }, [user]);
 
   useEffect(() => {
     if ((!state || !state.product) && !singleProduct) {
@@ -94,6 +122,7 @@ export default function Checkout() {
 
   const totalPriceWithCoupon = Math.max(totalPrice - couponValue, 0);
 
+  // Fetch Payment Methods
   useEffect(() => {
     fetch("http://localhost:8080/api/payment-methods", {
       headers: { Authorization: `Bearer ${token}` },
@@ -103,8 +132,9 @@ export default function Checkout() {
       .catch(() => messageApi.error("Không thể tải phương thức thanh toán"));
   }, [token]);
 
+  // Fetch Coupons
   useEffect(() => {
-    fetch("http://localhost:8080/api/coupons", {
+    fetch("http://localhost:8080/api/coupons/active", {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -112,13 +142,18 @@ export default function Checkout() {
       .catch(() => messageApi.error("Không thể tải danh sách voucher"));
   }, []);
 
-  // --- LOGIC XỬ LÝ VOUCHER (Chọn từ danh sách) ---
+  // --- LOGIC XỬ LÝ VOUCHER ---
   const handleSelectCoupon = (couponId) => {
     const selected = coupons.find((c) => c.couponId === couponId);
 
     if (!selected) {
       setSelectedCouponId(null);
       setCouponValue(0);
+      return;
+    }
+
+    if (isCouponExpired(selected.endDate)) {
+      messageApi.error(`Mã giảm giá ${selected.code} đã hết hạn sử dụng!`);
       return;
     }
 
@@ -147,27 +182,29 @@ export default function Checkout() {
     messageApi.success("Áp dụng mã giảm giá thành công!");
   };
 
-  // --- LOGIC XỬ LÝ NHẬP MÃ THỦ CÔNG (Nút Áp dụng) ---
   const handleApplyManualCode = () => {
     if (!manualCouponCode.trim()) {
       messageApi.warning("Vui lòng nhập mã voucher!");
       return;
     }
 
-    // Tìm voucher trong danh sách (không phân biệt hoa thường)
     const normalizedCode = manualCouponCode.trim().toUpperCase();
     const foundCoupon = coupons.find(
       (c) => c.code?.toUpperCase() === normalizedCode
     );
 
-    // Kiểm tra các điều kiện
     if (!foundCoupon) {
       messageApi.error("Mã giảm giá không tồn tại!");
       return;
     }
 
+    if (isCouponExpired(foundCoupon.endDate)) {
+      messageApi.error("Mã giảm giá đã hết hạn sử dụng!");
+      return;
+    }
+
     if (!foundCoupon.isActive) {
-      messageApi.error("Mã này hiện đang tạm khóa hoặc đã hết hạn!");
+      messageApi.error("Mã này hiện đang tạm khóa!");
       return;
     }
 
@@ -179,7 +216,6 @@ export default function Checkout() {
       return;
     }
 
-    // Nếu hợp lệ: Tự động chọn (tick) voucher này trong danh sách
     setTempSelectedCouponId(foundCoupon.couponId);
     messageApi.success("Mã hợp lệ! Voucher đã được chọn.");
   };
@@ -192,6 +228,17 @@ export default function Checkout() {
       return messageApi.warning("Vui lòng chọn phương thức thanh toán!");
     if (!productsToPay.length)
       return messageApi.warning("Không có sản phẩm để thanh toán!");
+
+    if (selectedCouponId) {
+      const finalCoupon = coupons.find((c) => c.couponId === selectedCouponId);
+      if (finalCoupon && isCouponExpired(finalCoupon.endDate)) {
+        setSelectedCouponId(null);
+        setCouponValue(0);
+        return messageApi.error(
+          `Mã ${finalCoupon.code} đã hết hạn. Vui lòng chọn mã khác.`
+        );
+      }
+    }
 
     const orderPayload = {
       userId: Cookies.get("user_id"),
@@ -234,12 +281,14 @@ export default function Checkout() {
         );
 
         if (!vnpRes.ok) {
+          const errorBody = await vnpRes.text();
+          console.error("VNPAY API Error Response:", errorBody);
           return messageApi.error("Không thể kết nối VNPAY");
         }
 
         const vnpData = await vnpRes.json();
 
-        if (vnpData.code === "00") {
+        if (vnpData.code === "00" && vnpData.data) {
           sessionStorage.setItem(
             "pendingOrder",
             JSON.stringify({
@@ -248,7 +297,7 @@ export default function Checkout() {
               oldOrderIds,
               note,
               paymentMethod,
-              shippingAddress: `${selectedAddress.name} - ${selectedAddress.phone} - ${selectedAddress.address}`,
+              shippingAddress: orderPayload.shippingAddress, // Lưu địa chỉ đã chọn
               couponId: selectedCouponId,
             })
           );
@@ -263,6 +312,7 @@ export default function Checkout() {
       }
     }
 
+    // COD Order
     const generateTransactionId = () => {
       const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
       let rand = "";
@@ -274,48 +324,41 @@ export default function Checkout() {
 
     try {
       let res;
+      const apiPath = oldOrderIds?.length
+        ? "/api/orders/replace"
+        : "/api/orders";
+      const method = items.length === 1 && state?.order ? "PUT" : "POST";
+      const url =
+        items.length === 1 && state?.order
+          ? `http://localhost:8080/api/orders/${state.order.orderId}`
+          : `http://localhost:8080${apiPath}`;
 
-      if (items.length === 1 && state?.order) {
-        const existingOrderId = state.order.orderId;
-        res = await fetch(
-          `http://localhost:8080/api/orders/${existingOrderId}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(orderPayload),
-          }
-        );
-      } else if (oldOrderIds?.length) {
-        res = await fetch("http://localhost:8080/api/orders/replace", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(orderPayload),
-        });
-      } else {
-        res = await fetch("http://localhost:8080/api/orders", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(orderPayload),
-        });
+      res = await fetch(url, {
+        method: method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderPayload),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(
+            errorJson.message || errorJson.error || "Đặt hàng thất bại"
+          );
+        } catch {
+          throw new Error(errorText || "Đặt hàng thất bại");
+        }
       }
-
-      if (!res.ok) throw new Error("Đặt hàng thất bại");
 
       const orderData = await res.json();
       const createdOrderId = orderData.orderId;
 
       if (paymentMethod === "PM001") {
         const transactionId = generateTransactionId();
-
         const paymentPayload = {
           orderId: createdOrderId,
           paymentMethodId: paymentMethod,
@@ -342,20 +385,18 @@ export default function Checkout() {
         setTimeout(() => {
           navigate("/purchase");
         }, 2000);
-
         return;
       }
-
       navigate("/order");
     } catch (err) {
-      console.error(err);
+      console.error("Lỗi đặt hàng cuối cùng:", err);
       messageApi.error(
         err.message || "Không thể tạo đơn hàng. Vui lòng thử lại."
       );
     }
   };
 
-  // -------------------- Địa chỉ --------------------
+  // --- Address Modal Handlers ---
   const openAddModal = () => {
     setEditingAddress(null);
     setModalData({ name: "", phone: "", address: "" });
@@ -702,7 +743,7 @@ export default function Checkout() {
                   >
                     <span>Đặt hàng</span>
                     <ChevronRight className="w-5 h-5 opacity-80" />
-                  </button>                  
+                  </button>
                 </div>
               </div>
             </div>
@@ -807,13 +848,14 @@ export default function Checkout() {
           ) : (
             coupons.map((c) => {
               const isInactive = !c.isActive;
+              const isExpired = isCouponExpired(c.endDate);
 
               // --- LOGIC KIỂM TRA ĐIỀU KIỆN ---
               const minSpend = c.minOrderAmount || 0;
               const isEligible = totalPrice >= minSpend;
 
-              // Chỉ cho phép chọn nếu voucher active VÀ đủ điều kiện tiền tối thiểu
-              const canSelect = !isInactive && isEligible;
+              // Chỉ cho phép chọn nếu voucher active VÀ đủ điều kiện tiền tối thiểu VÀ CHƯA HẾT HẠN
+              const canSelect = !isInactive && isEligible && !isExpired;
               const isSelected = tempSelectedCouponId === c.couponId;
 
               return (
@@ -874,10 +916,18 @@ export default function Checkout() {
                     </p>
 
                     {/* Báo lỗi nếu không đủ điều kiện */}
-                    {!isEligible && !isInactive && (
-                      <p className="text-xs text-orange-600 flex items-center gap-1 mt-1 font-medium">
-                        <AlertCircle className="w-3 h-3" /> Mua thêm{" "}
-                        {(minSpend - totalPrice).toLocaleString()}đ
+                    {!canSelect && (
+                      <p className="text-xs text-red-600 flex items-center gap-1 mt-1 font-bold">
+                        <AlertCircle className="w-3 h-3" />
+                        {isInactive
+                          ? "Tạm khóa bởi quản trị viên"
+                          : isExpired
+                          ? "ĐÃ HẾT HẠN SỬ DỤNG"
+                          : !isEligible
+                          ? `Cần thêm ${(
+                              minSpend - totalPrice
+                            ).toLocaleString()}đ`
+                          : "Không hợp lệ"}
                       </p>
                     )}
                   </div>

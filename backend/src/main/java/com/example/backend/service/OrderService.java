@@ -20,4 +20,6 @@ public interface OrderService {
 
     // Method DTO
     List<OrderDTO> getOrdersByUserId(String userId);
+
+    void cancelOrder(String orderId, String reason);
 }

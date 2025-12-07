@@ -11,6 +11,8 @@ import java.util.List;
 import java.time.LocalDateTime;
 
 public interface OrderRepository extends JpaRepository<Order, String> {
+	List<Order> findByIsOrderTrue();
+
 	List<Order> findByUserId(String userId);
 
 	List<Order> findByUserIdAndIsOrderFalse(String userId);
