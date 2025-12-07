@@ -6,6 +6,7 @@ import java.util.Optional;
 
 public interface CouponService {
     List<Coupon> getAllCoupons();
+    List<Coupon> getActiveCoupons();
     Optional<Coupon> getCouponById(Integer id);
     Coupon createCoupon(Coupon coupon);
     Coupon updateCoupon(Integer id, Coupon coupon);

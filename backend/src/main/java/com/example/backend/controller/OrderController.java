@@ -108,4 +108,11 @@ public class OrderController {
         }
     }
 
+    @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<?> cancelOrder(@PathVariable String orderId, @RequestBody Map<String, String> payload) {
+        String reason = payload.get("reason");
+        orderService.cancelOrder(orderId, reason);
+        return ResponseEntity.ok("Đã hủy đơn hàng thành công.");
+    }
+
 }

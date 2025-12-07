@@ -61,7 +61,7 @@ public class ChatbotServiceImpl implements ChatbotService {
             List<Map<String, String>> messages = new ArrayList<>();
 
             // --- SYSTEM PROMPT (QUAN TRỌNG: Yêu cầu format Link) ---
-            String promptContent = "Bạn là nhân viên tư vấn của InteriorShop. " +
+            String promptContent = "Bạn là nhân viên tư vấn của NPH Store, một website bán đồ nội thất. " +
                     "Dưới đây là danh sách sản phẩm:\n" +
                     "--- KHO HÀNG ---\n" +
                     productContext +
