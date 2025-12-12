@@ -20,6 +20,7 @@ public interface AdminDashboardService {
     List<Map<String, Object>> getTopCustomers();
 
     List<Map<String, Object>> getRevenueStatistics(String timeRange);
+    List<Map<String, Object>> getRevenueStatisticsByDateRange(String fromDate, String toDate);
 
     List<Map<String, Object>> getPeakHoursStats();
     List<Map<String, Object>> getLowStockProducts();

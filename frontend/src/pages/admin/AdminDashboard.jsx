@@ -520,7 +520,7 @@ export default function AdminDashboard() {
                       }}
                       formatter={(value, name) => [
                         new Intl.NumberFormat("vi-VN").format(value),
-                        name === "actual" ? "Thực tế" : "Ước tính",
+                        name === "Thực tế" ? "Thực tế" : "Ước tính",
                       ]}
                     />
                     <Legend verticalAlign="top" height={36} iconType="circle" />
@@ -528,7 +528,7 @@ export default function AdminDashboard() {
                       type="monotone"
                       dataKey="estimated"
                       name="Ước tính"
-                      stroke="#3b82f6"
+                      stroke="#bd7332ff"
                       strokeWidth={2}
                       strokeDasharray="5 5"
                       fillOpacity={1}

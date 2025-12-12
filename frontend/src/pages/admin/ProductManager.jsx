@@ -25,6 +25,7 @@ import {
   PlusOutlined,
   UploadOutlined,
   ReloadOutlined,
+  FilterOutlined, // Import thêm icon lọc
 } from "@ant-design/icons";
 import { AuthContext } from "../../context/AuthContext";
 import Cookies from "js-cookie";
@@ -36,6 +37,10 @@ export default function ProductManager() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
+  
+  // 1. THÊM STATE ĐỂ LƯU DANH MỤC ĐANG LỌC
+  const [filterCategoryId, setFilterCategoryId] = useState(null); 
+
   const [editingProduct, setEditingProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -181,11 +186,20 @@ export default function ProductManager() {
   };
 
   const handleSearch = (val) => setSearchText(val.toLowerCase());
-  const filteredProducts = products.filter(
-    (p) =>
+
+  // 2. CẬP NHẬT LOGIC LỌC: KẾT HỢP TÌM KIẾM VÀ DANH MỤC
+  const filteredProducts = products.filter((p) => {
+    const matchSearch =
       p.productName?.toLowerCase().includes(searchText) ||
-      p.description?.toLowerCase().includes(searchText)
-  );
+      p.description?.toLowerCase().includes(searchText);
+    
+    // Nếu filterCategoryId có giá trị thì kiểm tra xem có khớp không, nếu null thì bỏ qua (true)
+    const matchCategory = filterCategoryId 
+      ? p.categoryId === filterCategoryId 
+      : true;
+
+    return matchSearch && matchCategory;
+  });
 
   const columns = [
     {
@@ -227,6 +241,8 @@ export default function ProductManager() {
       render: (v) =>
         v > 0 ? <span className="text-red-500 font-bold">-{v}%</span> : "-",
     },
+    // Thêm cột hiển thị ID Danh mục để dễ check (tùy chọn)
+    // { title: "Danh mục", dataIndex: "categoryId", width: 100 }, 
     { title: "Bảo hành", dataIndex: "warranty", responsive: ["lg"] },
     {
       title: "",
@@ -264,10 +280,25 @@ export default function ProductManager() {
               Quản lý sản phẩm
             </Title>
             <div className="text-gray-500 text-sm">
-              {products.length} sản phẩm hiện có
+              {/* Hiển thị số lượng sau khi lọc */}
+              Hiển thị {filteredProducts.length} / {products.length} sản phẩm
             </div>
           </div>
+          
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+             {/* 3. THÊM UI SELECT ĐỂ CHỌN DANH MỤC */}
+            <Select
+              placeholder="Lọc theo danh mục"
+              style={{ width: 200 }}
+              allowClear // Cho phép xóa chọn để hiện tất cả
+              onChange={(value) => setFilterCategoryId(value)}
+              options={categories.map((c) => ({
+                label: c.categoryName,
+                value: c.categoryId,
+              }))}
+              suffixIcon={<FilterOutlined />} // Icon cái phễu cho đẹp
+            />
+
             <Input
               placeholder="Tìm tên sản phẩm..."
               prefix={<SearchOutlined />}
@@ -288,7 +319,7 @@ export default function ProductManager() {
 
         <Table
           rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-          dataSource={filteredProducts}
+          dataSource={filteredProducts} // Sử dụng danh sách đã lọc
           columns={columns}
           rowKey="productId"
           loading={loading}
@@ -297,6 +328,7 @@ export default function ProductManager() {
         />
       </Card>
 
+      {/* Modal giữ nguyên không thay đổi */}
       <Modal
         title={editingProduct ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
         open={isModalOpen}
@@ -309,7 +341,6 @@ export default function ProductManager() {
       >
         <Form form={form} layout="vertical" className="pt-4">
           <Row gutter={16}>
-            {/* Cột trái */}
             <Col span={24} md={16}>
               <Row gutter={16}>
                 <Col span={12}>
@@ -386,7 +417,6 @@ export default function ProductManager() {
               </Row>
             </Col>
 
-            {/* Cột phải - Ảnh & Thuộc tính phụ */}
             <Col span={24} md={8}>
               <Form.Item label="Hình ảnh">
                 <Upload
