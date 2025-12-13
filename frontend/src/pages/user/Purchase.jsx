@@ -255,121 +255,129 @@ export default function Purchase() {
         {/* Orders List */}
         <div className="space-y-6">
           {!loading &&
-            filteredOrders.map((order) => {
-              const statusConfig = getStatusConfig(order.orderStatus);
-              const canCancel =
-                (order.orderStatus || "").toLowerCase() === "pending";
+            filteredOrders
+              .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+              .map((order) => {
+                const statusConfig = getStatusConfig(order.orderStatus);
+                const canCancel =
+                  (order.orderStatus || "").toLowerCase() === "pending";
 
-              return (
-                <div
-                  key={order.orderId}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300"
-                >
-                  {/* Header */}
-                  <div className="px-6 py-4 border-b border-gray-50 flex flex-wrap gap-4 justify-between items-center bg-gray-50/50">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-semibold text-gray-900">
-                        Mã đơn: #{order.orderId}
-                      </span>
-                      <span className="hidden sm:inline text-gray-300">|</span>
-                      <span className="text-sm text-gray-500">
-                        {new Date(order.orderDate).toLocaleString("vi-VN")}
-                      </span>
-                    </div>
-                    <div
-                      className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border ${statusConfig.color}`}
-                    >
-                      {statusConfig.icon}
-                      <span className="uppercase">{statusConfig.label}</span>
-                    </div>
-                  </div>
-
-                  {/* Products */}
-                  <div className="divide-y divide-gray-50">
-                    {order.orderDetails.map((item) => (
+                return (
+                  <div
+                    key={order.orderId}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300"
+                  >
+                    {/* Header */}
+                    <div className="px-6 py-4 border-b border-gray-50 flex flex-wrap gap-4 justify-between items-center bg-gray-50/50">
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm font-semibold text-gray-900">
+                          Mã đơn: #{order.orderId}
+                        </span>
+                        <span className="hidden sm:inline text-gray-300">
+                          |
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {new Date(order.orderDate).toLocaleString("vi-VN")}
+                        </span>
+                      </div>
                       <div
-                        key={item.orderDetailId}
-                        className="p-6 flex flex-col sm:flex-row gap-4 sm:items-center group"
+                        className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border ${statusConfig.color}`}
                       >
-                        <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-                          <img
-                            src={item.product?.imageUrl || nothingImg}
-                            alt={item.product?.productName}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900 text-base mb-1 line-clamp-2">
-                            {item.product?.productName}
-                          </h4>
-                          <p className="text-sm text-gray-500">
-                            Số lượng: {item.quantity}
-                          </p>
-                        </div>
-                        <div className="text-right sm:text-right">
-                          <div className="font-medium text-gray-900">
-                            {(item.unitPrice * item.quantity).toLocaleString()}₫
+                        {statusConfig.icon}
+                        <span className="uppercase">{statusConfig.label}</span>
+                      </div>
+                    </div>
+
+                    {/* Products */}
+                    <div className="divide-y divide-gray-50">
+                      {order.orderDetails.map((item) => (
+                        <div
+                          key={item.orderDetailId}
+                          className="p-6 flex flex-col sm:flex-row gap-4 sm:items-center group"
+                        >
+                          <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                            <img
+                              src={item.product?.imageUrl || nothingImg}
+                              alt={item.product?.productName}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900 text-base mb-1 line-clamp-2">
+                              {item.product?.productName}
+                            </h4>
+                            <p className="text-sm text-gray-500">
+                              Số lượng: {item.quantity}
+                            </p>
+                          </div>
+                          <div className="text-right sm:text-right">
+                            <div className="font-medium text-gray-900">
+                              {(
+                                item.unitPrice * item.quantity
+                              ).toLocaleString()}
+                              ₫
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
 
-                  {/* Footer */}
-                  <div className="px-6 py-5 bg-gray-50/30 border-t border-gray-100 flex flex-col sm:flex-row items-end sm:items-center justify-between gap-4">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <span className="text-sm">Tổng tiền:</span>
-                        <span className="text-xl font-bold text-red-600">
-                          {order.totalAmount.toLocaleString()}₫
-                        </span>
-                      </div>
-                      {order.payment && (
-                        <span
-                          className={`text-xs font-semibold px-2 py-0.5 rounded w-fit ${
-                            order.payment.paymentStatus === "Completed"
-                              ? "bg-green-100 text-green-700"
+                    {/* Footer */}
+                    <div className="px-6 py-5 bg-gray-50/30 border-t border-gray-100 flex flex-col sm:flex-row items-end sm:items-center justify-between gap-4">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <span className="text-sm">Tổng tiền:</span>
+                          <span className="text-xl font-bold text-red-600">
+                            {order.totalAmount.toLocaleString()}₫
+                          </span>
+                        </div>
+                        {order.payment && (
+                          <span
+                            className={`text-xs font-semibold px-2 py-0.5 rounded w-fit ${
+                              order.payment.paymentStatus === "Completed"
+                                ? "bg-green-100 text-green-700"
+                                : order.payment.paymentStatus ===
+                                  "Refund_Pending"
+                                ? "bg-purple-100 text-purple-700"
+                                : order.payment.paymentStatus === "Refunded"
+                                ? "bg-pink-100 text-pink-700"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {order.payment.paymentStatus === "Completed"
+                              ? "Đã thanh toán"
                               : order.payment.paymentStatus === "Refund_Pending"
-                              ? "bg-purple-100 text-purple-700"
+                              ? "Chờ hoàn tiền"
                               : order.payment.paymentStatus === "Refunded"
-                              ? "bg-pink-100 text-pink-700"
-                              : "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {order.payment.paymentStatus === "Completed"
-                            ? "Đã thanh toán"
-                            : order.payment.paymentStatus === "Refund_Pending"
-                            ? "Chờ hoàn tiền"
-                            : order.payment.paymentStatus === "Refunded"
-                            ? "Đã hoàn tiền"
-                            : "Chưa thanh toán"}
-                        </span>
-                      )}
-                    </div>
+                              ? "Đã hoàn tiền"
+                              : "Chưa thanh toán"}
+                          </span>
+                        )}
+                      </div>
 
-                    <div className="flex gap-3 w-full sm:w-auto">
-                      {/* Nút Hủy Đơn */}
-                      {canCancel && (
+                      <div className="flex gap-3 w-full sm:w-auto">
+                        {/* Nút Hủy Đơn */}
+                        {canCancel && (
+                          <button
+                            onClick={() => handleCancelOrder(order)}
+                            className="flex-1 sm:flex-none px-6 py-2.5 rounded-lg border border-red-200 text-red-600 font-medium hover:bg-red-50 transition-colors"
+                          >
+                            Hủy đơn
+                          </button>
+                        )}
+
+                        {/* Nút Chi Tiết (Luôn hiện để User xem lại) */}
                         <button
-                          onClick={() => handleCancelOrder(order)}
-                          className="flex-1 sm:flex-none px-6 py-2.5 rounded-lg border border-red-200 text-red-600 font-medium hover:bg-red-50 transition-colors"
+                          onClick={() => handleOpenDetail(order)} // Gắn hàm mở Modal
+                          className="flex-1 sm:flex-none px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 hover:text-indigo-600 hover:border-indigo-200 transition-colors"
                         >
-                          Hủy đơn
+                          Chi tiết
                         </button>
-                      )}
-
-                      {/* Nút Chi Tiết (Luôn hiện để User xem lại) */}
-                      <button
-                        onClick={() => handleOpenDetail(order)} // Gắn hàm mở Modal
-                        className="flex-1 sm:flex-none px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 hover:text-indigo-600 hover:border-indigo-200 transition-colors"
-                      >
-                        Chi tiết
-                      </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
         </div>
       </div>
 

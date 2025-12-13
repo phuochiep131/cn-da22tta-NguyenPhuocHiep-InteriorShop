@@ -31,14 +31,14 @@ export default function PaymentReturn() {
       note,
       paymentMethod,
       couponId,
-      quantity,
+      buyQuantity,
       shippingAddress,
     } = pendingOrder;
 
     const productsToPay = [
       ...(items || []),
       ...(singleProduct
-        ? [{ ...singleProduct, quantity: quantity || 1 }]
+        ? [{ ...singleProduct, quantity: buyQuantity || 1 }] // [SỬA 2] Dùng buyQuantity ở đây
         : []),
     ];
 
@@ -62,7 +62,7 @@ export default function PaymentReturn() {
       orderStatus: "pending",
       orderDetails: productsToPay.map((item) => ({
         product: { productId: item.product?.productId || item.productId },
-        quantity: item.quantity || 1,
+        quantity: item.quantity || 1, // Lúc này item.quantity đã đúng nhờ bước trên
         unitPrice: item.unitPrice || item.product?.price || item.price,
         originalUnitPrice:
           item.originalUnitPrice || item.product?.price || item.price,

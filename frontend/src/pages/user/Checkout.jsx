@@ -299,6 +299,7 @@ export default function Checkout() {
               paymentMethod,
               shippingAddress: orderPayload.shippingAddress, // Lưu địa chỉ đã chọn
               couponId: selectedCouponId,
+              buyQuantity: state?.quantity || 1,
             })
           );
           window.location.href = vnpData.data;

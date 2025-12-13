@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -185,31 +186,45 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         LocalDateTime endDate = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
         LocalDateTime startDate;
 
-        // 1. Xử lý logic chọn thời gian
         switch (timeRange) {
             case "TODAY":
                 startDate = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
                 break;
-            case "3_DAYS":
-                startDate = endDate.minusDays(2); // Lấy hôm nay + 2 ngày trước
-                break;
-            case "7_DAYS":
-                startDate = endDate.minusDays(6);
-                break;
-            case "1_MONTH":
-                startDate = endDate.minusMonths(1);
-                break;
-            case "3_MONTHS":
-                startDate = endDate.minusMonths(3);
-                break;
-            default: // Mặc định 7 ngày
-                startDate = endDate.minusDays(6);
+            case "3_DAYS": startDate = endDate.minusDays(2); break;
+            case "7_DAYS": startDate = endDate.minusDays(6); break;
+            case "1_MONTH": startDate = endDate.minusMonths(1); break;
+            case "3_MONTHS": startDate = endDate.minusMonths(3); break;
+            default: startDate = endDate.minusDays(6);
         }
 
-        // 2. Lấy dữ liệu thô từ DB
+        return processChartData(startDate, endDate);
+    }
+
+    // 2. [MỚI] Method xử lý Custom Date Range (cho Export)
+    @Override
+    public List<Map<String, Object>> getRevenueStatisticsByDateRange(String fromDateStr, String toDateStr) {
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+            // Parse String (yyyy-MM-dd) thành LocalDateTime
+            // Ngày bắt đầu: 00:00:00
+            LocalDateTime startDate = LocalDate.parse(fromDateStr, formatter).atStartOfDay();
+
+            // Ngày kết thúc: 23:59:59
+            LocalDateTime endDate = LocalDate.parse(toDateStr, formatter).atTime(LocalTime.MAX);
+
+            return processChartData(startDate, endDate);
+        } catch (DateTimeParseException e) {
+            throw new RuntimeException("Lỗi định dạng ngày tháng (yyyy-MM-dd): " + e.getMessage());
+        }
+    }
+
+    // 3. [HELPER] Hàm chung để Query và Map dữ liệu (Tách từ code cũ của bạn ra)
+    private List<Map<String, Object>> processChartData(LocalDateTime startDate, LocalDateTime endDate) {
+        // Lấy dữ liệu thô từ DB
         List<Object[]> rawData = orderRepository.findRevenueChartData(startDate, endDate);
 
-        // 3. Map dữ liệu vào HashMap để dễ tra cứu (Key: LocalDate -> Value: Doanh thu)
+        // Map dữ liệu vào HashMap (Key: LocalDate -> Value: Data)
         Map<LocalDate, Map<String, Object>> dataMap = new HashMap<>();
         for (Object[] row : rawData) {
             LocalDate date;
@@ -220,7 +235,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             }
 
             BigDecimal amount = (BigDecimal) row[1];
-            Long count = (Long) row[2]; // Lấy thêm số lượng đơn
+            Long count = (Long) row[2];
 
             Map<String, Object> values = new HashMap<>();
             values.put("revenue", amount);
@@ -229,15 +244,15 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             dataMap.put(date, values);
         }
 
-// Loop để fill data
+        // Loop để fill data đầy đủ các ngày (kể cả ngày không có đơn)
         List<Map<String, Object>> result = new ArrayList<>();
         LocalDate current = startDate.toLocalDate();
         LocalDate end = endDate.toLocalDate();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy"); // Format đẹp cho báo cáo
 
         while (!current.isAfter(end)) {
             Map<String, Object> item = new HashMap<>();
-            item.put("label", current.format(formatter));
+            item.put("label", current.format(formatter)); // VD: 10/12/2025
 
             if (dataMap.containsKey(current)) {
                 item.put("revenue", dataMap.get(current).get("revenue"));

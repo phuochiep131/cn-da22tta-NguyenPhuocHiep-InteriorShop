@@ -52,6 +52,13 @@ public class AdminDashboardController {
         return ResponseEntity.ok(dashboardService.getRevenueStatistics(range));
     }
 
+    @GetMapping("/chart/revenue/custom")
+    public ResponseEntity<?> getRevenueChartCustom(
+            @RequestParam String from,
+            @RequestParam String to) {
+        return ResponseEntity.ok(dashboardService.getRevenueStatisticsByDateRange(from, to));
+    }
+
     @GetMapping("/orders/peak-hours")
     public ResponseEntity<List<Map<String, Object>>> getPeakHours() {
         return ResponseEntity.ok(dashboardService.getPeakHoursStats());
