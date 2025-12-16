@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Menu, Drawer, Button, Avatar, Dropdown } from "antd";
 import {
   HomeOutlined,
+  GiftOutlined,
   UserOutlined,
   ShoppingOutlined,
   DollarOutlined,
@@ -52,6 +53,7 @@ export default function AdminLayout() {
     { key: "dashboard", icon: <AppstoreOutlined />, label: "Tổng quan" },
     { key: "orders", icon: <ShoppingOutlined />, label: "Đơn hàng" },
     { key: "products", icon: <TagsOutlined />, label: "Sản phẩm" },
+    { key: "flash-sale", icon: <GiftOutlined  />, label: "Flash sale" },
     { key: "categories", icon: <MenuOutlined />, label: "Danh mục" },
     { key: "users", icon: <UserOutlined />, label: "Khách hàng" },
     { key: "payment-methods", icon: <CreditCardOutlined />, label: "Thanh toán" },
