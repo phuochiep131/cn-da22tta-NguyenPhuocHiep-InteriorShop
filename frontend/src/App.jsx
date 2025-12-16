@@ -12,6 +12,7 @@ import PaymentMethodManager from "./pages/admin/PaymentMethodManager";
 import CouponManager from "./pages/admin/CouponManager";
 import OrderManager from "./pages/admin/OrderManager";
 import StatsPage from "./pages/admin/StatsPage";
+import FlashSaleManager from "./pages/admin/FlashSaleManager";
 
 import Home from "./pages/user/Home";
 import Login from "./pages/user/Login";
@@ -49,6 +50,7 @@ export default function App() {
             <Route path="users" element={<UserManager />} />
             <Route path="categories" element={<CategoryManager />} />
             <Route path="products" element={<ProductManager />} />
+            <Route path="flash-sale" element={<FlashSaleManager />} />
             <Route path="payment-methods" element={<PaymentMethodManager />} />
             <Route path="coupons" element={<CouponManager />} />
             <Route path="orders" element={<OrderManager />} />

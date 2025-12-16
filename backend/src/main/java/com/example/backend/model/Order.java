@@ -20,36 +20,53 @@ public class Order {
     @Column(name = "order_id", length = 50)
     private String orderId;
 
-    @Column(name = "user_id", length = 50)
+    @Column(name = "user_id", length = 50, nullable = false)
     private String userId;
 
-    @Column(name = "payment_method_id", length = 50)
-    private String paymentMethodId;
+    // ĐÃ XÓA paymentMethodId vì không có trong bảng DB
 
-    @Column(name = "shipping_address")
+    @Column(name = "shipping_address", nullable = false)
     private String shippingAddress;
 
-    @Column(name = "customer_note")
+    @Column(name = "customer_note", columnDefinition = "TEXT")
     private String customerNote;
 
-    @Column(name = "order_status")
+    @Column(name = "order_status", columnDefinition = "ENUM('Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled')")
     private String orderStatus;
 
-    @Column(name = "order_date")
+    @Column(name = "order_date", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime orderDate;
 
     @Column(name = "coupon_id")
     private Integer couponId;
 
-    @Column(name = "total_amount")
+    @Column(name = "total_amount", nullable = false)
     private BigDecimal totalAmount;
 
     @Column(name = "is_order")
     private Boolean isOrder;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderDetail> orderDetails;
 
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Payment payment;
+
+    @PrePersist
+    protected void onCreate() {
+        if (orderDate == null) {
+            orderDate = LocalDateTime.now();
+        }
+        if (orderStatus == null) {
+            orderStatus = "Pending";
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

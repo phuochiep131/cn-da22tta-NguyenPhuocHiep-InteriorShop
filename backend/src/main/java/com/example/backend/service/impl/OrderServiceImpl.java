@@ -39,7 +39,6 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<Order> getAllOrders() {
-        // Chỉ lấy các đơn hàng thực tế (đã đặt), bỏ qua giỏ hàng
         return orderRepository.findByIsOrderTrue();
     }
 
@@ -51,13 +50,14 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public Order createOrder(Order order) {
-        // Sinh ID và thời gian
         order.setOrderId(generateOrderId());
         order.setOrderDate(LocalDateTime.now());
+        // Default status if null
+        if (order.getOrderStatus() == null) {
+            order.setOrderStatus("Pending");
+        }
 
-        // --- XỬ LÝ NẾU LÀ ĐƠN HÀNG THẬT (MUA NGAY) ---
         if (Boolean.TRUE.equals(order.getIsOrder())) {
-            // [LOGIC COUPON] Tăng số lần sử dụng nếu có mã giảm giá
             if (order.getCouponId() != null) {
                 processCouponUsage(order.getCouponId());
             }
@@ -68,7 +68,7 @@ public class OrderServiceImpl implements OrderService {
                 Product product = productRepository.findById(detail.getProduct().getProductId())
                         .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
 
-                // --- LOGIC GIỎ HÀNG (isOrder = false hoặc null) ---
+                // Logic giỏ hàng
                 if (!Boolean.TRUE.equals(order.getIsOrder())) {
                     Optional<OrderDetail> existingDetailOpt = orderDetailRepository.findExistingCartItem(
                             order.getUserId(),
@@ -85,18 +85,15 @@ public class OrderServiceImpl implements OrderService {
 
                         existingDetail.setQuantity(newQuantity);
                         orderDetailRepository.save(existingDetail);
-                        // Lưu ý: Logic cũ của bạn return ngay tại đây, nghĩa là chỉ thêm được 1 sản phẩm nếu trùng.
-                        // Nếu muốn thêm nhiều sp, hãy bỏ return và để vòng lặp chạy tiếp.
                         return existingDetail.getOrder();
                     }
                 }
 
-                // --- LOGIC ĐƠN HÀNG THẬT (isOrder = true) ---
+                // Logic đơn hàng thật
                 if (Boolean.TRUE.equals(order.getIsOrder())) {
                     if (product.getQuantity() < detail.getQuantity()) {
                         throw new RuntimeException("Số lượng sản phẩm " + product.getProductName() + " không đủ");
                     }
-                    // Trừ tồn kho
                     product.setQuantity(product.getQuantity() - detail.getQuantity());
                     productRepository.save(product);
                 }
@@ -112,10 +109,13 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public Order updateOrder(String orderId, Order updatedOrder) {
-        orderRepository.findById(orderId)
+        Order existingOrder = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
 
         updatedOrder.setOrderId(orderId);
+        // Giữ lại ngày tạo cũ nếu không muốn override
+        updatedOrder.setOrderDate(existingOrder.getOrderDate());
+        updatedOrder.setUpdatedAt(LocalDateTime.now()); // Set Updated At
 
         if (updatedOrder.getOrderDetails() != null) {
             for (OrderDetail detail : updatedOrder.getOrderDetails()) {
@@ -148,6 +148,7 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
         order.setOrderStatus(status);
+        order.setUpdatedAt(LocalDateTime.now()); // Update time
         orderRepository.save(order);
     }
 
@@ -159,7 +160,6 @@ public class OrderServiceImpl implements OrderService {
                 .collect(Collectors.toList());
     }
 
-    // --- TÍNH NĂNG HỦY ĐƠN & HOÀN TIỀN ---
     @Override
     @Transactional
     public void cancelOrder(String orderId, String reason) {
@@ -173,7 +173,6 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Không thể hủy đơn hàng ở trạng thái: " + currentStatus);
         }
 
-        // 1. Hoàn trả số lượng sản phẩm vào kho
         if (order.getOrderDetails() != null) {
             for (OrderDetail detail : order.getOrderDetails()) {
                 Product product = detail.getProduct();
@@ -182,29 +181,23 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 2. Xử lý trạng thái thanh toán (Payment)
         Optional<Payment> paymentOpt = paymentRepository.findByOrderOrderId(orderId);
-
         if (paymentOpt.isPresent()) {
             Payment payment = paymentOpt.get();
-
-            // Nếu đã thanh toán (VNPay Completed) -> Chuyển sang Chờ hoàn tiền
             if (PaymentStatus.Completed.equals(payment.getPaymentStatus())) {
                 payment.setPaymentStatus(PaymentStatus.Refund_Pending);
                 paymentRepository.save(payment);
-            }
-            // Nếu đang chờ thanh toán (VNPay Pending) -> Hủy luôn
-            else if (PaymentStatus.Pending.equals(payment.getPaymentStatus())) {
+            } else if (PaymentStatus.Pending.equals(payment.getPaymentStatus())) {
                 payment.setPaymentStatus(PaymentStatus.Failed);
                 paymentRepository.save(payment);
             }
         }
 
-        // 3. Cập nhật trạng thái đơn hàng
         order.setOrderStatus("Cancelled");
         String note = (order.getCustomerNote() != null ? order.getCustomerNote() : "")
                 + " | Đã hủy: " + reason;
         order.setCustomerNote(note);
+        order.setUpdatedAt(LocalDateTime.now());
 
         orderRepository.save(order);
     }
@@ -224,7 +217,7 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderDate(LocalDateTime.now());
         order.setOrderStatus("Pending");
         order.setUserId(req.getUserId());
-        order.setPaymentMethodId(req.getPaymentMethodId());
+        // order.setPaymentMethodId(req.getPaymentMethodId()); // XÓA: Bảng Order không còn cột này
         order.setShippingAddress(req.getShippingAddress());
         order.setCustomerNote(req.getCustomerNote());
         order.setTotalAmount(req.getTotalAmount());
@@ -262,7 +255,6 @@ public class OrderServiceImpl implements OrderService {
     public Order checkoutOrder(Order order) {
         String userId = order.getUserId();
 
-        // 1. Xóa các mục trong giỏ hàng cũ (isOrder = false)
         List<Order> userOrders = orderRepository.findByUserIdAndIsOrderFalse(userId);
         if (!userOrders.isEmpty()) {
             for (Order o : userOrders) {
@@ -270,25 +262,22 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 2. Tạo đơn hàng mới
         Order newOrder = new Order();
         newOrder.setOrderId(generateOrderId());
         newOrder.setUserId(userId);
-        newOrder.setPaymentMethodId(order.getPaymentMethodId());
+        // newOrder.setPaymentMethodId(order.getPaymentMethodId()); // XÓA: Bảng Order không còn cột này
         newOrder.setShippingAddress(order.getShippingAddress());
         newOrder.setCustomerNote(order.getCustomerNote());
         newOrder.setTotalAmount(order.getTotalAmount());
         newOrder.setOrderStatus("Pending");
         newOrder.setOrderDate(LocalDateTime.now());
-        newOrder.setIsOrder(true); // Đánh dấu là đơn hàng thật
+        newOrder.setIsOrder(true);
 
-        // [LOGIC COUPON] Tăng số lần sử dụng nếu có mã giảm giá
         if (order.getCouponId() != null) {
-            newOrder.setCouponId(order.getCouponId()); // Lưu lại coupon vào đơn mới
-            processCouponUsage(order.getCouponId());   // Tăng count trong bảng coupons
+            newOrder.setCouponId(order.getCouponId());
+            processCouponUsage(order.getCouponId());
         }
 
-        // 4. Xử lý chi tiết đơn hàng & Trừ tồn kho
         List<OrderDetail> allDetails = order.getOrderDetails();
         List<OrderDetail> newDetails = allDetails.stream()
                 .map(od -> {
@@ -319,18 +308,15 @@ public class OrderServiceImpl implements OrderService {
         Coupon coupon = couponRepository.findById(couponId)
                 .orElseThrow(() -> new RuntimeException("Mã giảm giá không tồn tại"));
 
-        // 1. Kiểm tra hạn sử dụng
         LocalDateTime now = LocalDateTime.now();
         if (coupon.getEndDate() != null && now.isAfter(coupon.getEndDate())) {
             throw new RuntimeException("Mã giảm giá đã hết hạn");
         }
 
-        // 2. Kiểm tra giới hạn số lần dùng
         if (coupon.getUsageLimit() != null && coupon.getUsedCount() >= coupon.getUsageLimit()) {
             throw new RuntimeException("Mã giảm giá đã hết lượt sử dụng");
         }
 
-        // 3. Tăng số lần sử dụng
         int currentCount = coupon.getUsedCount() == null ? 0 : coupon.getUsedCount();
         coupon.setUsedCount(currentCount + 1);
 

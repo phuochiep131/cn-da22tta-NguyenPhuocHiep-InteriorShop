@@ -11,11 +11,11 @@ public class OrderDTO {
 
     private String orderId;
     private String userId;
-    private String paymentMethodId;
     private String shippingAddress;
     private String customerNote;
     private String orderStatus;
     private LocalDateTime orderDate;
+    private LocalDateTime updatedAt;
     private Integer couponId;
     private BigDecimal totalAmount;
     private Boolean isOrder;
@@ -29,18 +29,20 @@ public class OrderDTO {
     public OrderDTO(Order order) {
         this.orderId = order.getOrderId();
         this.userId = order.getUserId();
-        this.paymentMethodId = order.getPaymentMethodId();
         this.shippingAddress = order.getShippingAddress();
         this.customerNote = order.getCustomerNote();
         this.orderStatus = order.getOrderStatus();
         this.orderDate = order.getOrderDate();
+        this.updatedAt = order.getUpdatedAt();
         this.couponId = order.getCouponId();
         this.totalAmount = order.getTotalAmount();
         this.isOrder = order.getIsOrder();
 
-        this.orderDetails = order.getOrderDetails().stream()
-                .map(OrderDetailDTO::new)
-                .toList();
+        if (order.getOrderDetails() != null) {
+            this.orderDetails = order.getOrderDetails().stream()
+                    .map(OrderDetailDTO::new)
+                    .toList();
+        }
 
         if (order.getPayment() != null) {
             this.payment = PaymentDTO.builder()
