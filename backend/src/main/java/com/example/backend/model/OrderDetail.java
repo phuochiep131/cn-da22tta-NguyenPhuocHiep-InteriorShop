@@ -41,6 +41,11 @@ public class OrderDetail {
     @Column(name = "original_unit_price", nullable = false)
     private BigDecimal originalUnitPrice;
 
+    // --- [MỚI] Trường này nhận cờ từ Frontend (JSON) ---
+    // @Transient giúp nhận dữ liệu nhưng không lưu vào DB
+    @Transient
+    private Integer isFlashSale;
+
     @PrePersist
     public void prePersist() {
         if (this.orderDetailId == null) {
@@ -53,8 +58,6 @@ public class OrderDetail {
                 + "-" + java.util.UUID.randomUUID().toString().substring(0, 8);
     }
 
-
-    // Tính subtotal
     public BigDecimal getSubtotal() {
         return unitPrice.multiply(BigDecimal.valueOf(quantity));
     }

@@ -11,7 +11,8 @@ import {
   ArrowRight,
   AlertCircle,
   Ban,
-} from "lucide-react"; // Thêm icon Ban
+  Zap,
+} from "lucide-react";
 import nothingImg from "../../assets/nothing.png";
 
 export default function CartPage() {
@@ -20,18 +21,25 @@ export default function CartPage() {
   const navigate = useNavigate();
   const [cartOrders, setCartOrders] = useState([]);
   const [selectedItems, setSelectedItems] = useState({});
+  const [flashSale, setFlashSale] = useState(null);
   const [messageApi, contextHolder] = message.useMessage();
   const { refreshCartCount } = useContext(CartContext);
 
   useEffect(() => {
-    fetchCartItems();
+    const initData = async () => {
+      await Promise.all([fetchCartItems(), fetchFlashSale()]);
+    };
+    initData();
   }, []);
 
+  // 1. Fetch Cart
   const fetchCartItems = async () => {
     try {
       const res = await fetch(
         `http://localhost:8080/api/cart/items/${userId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       if (!res.ok) throw new Error("Failed to fetch cart");
 
@@ -45,11 +53,69 @@ export default function CartPage() {
         });
       });
       setSelectedItems(initialSelected);
-
       refreshCartCount(userId, token);
     } catch (error) {
       console.error("Cart error:", error);
     }
+  };
+
+  // 2. Fetch Flash Sale
+  const fetchFlashSale = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/api/flash-sales/current");
+      if (res.ok) {
+        const text = await res.text();
+        if (text) {
+          const data = JSON.parse(text);
+          if (data && data.status === "Active") {
+            setFlashSale(data);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Flash sale fetch error:", error);
+    }
+  };
+
+  // --- HELPER: Lấy thông tin giá & tồn kho ---
+  const getProductStockInfo = (product) => {
+    const normalStock = product.quantity ?? 0;
+
+    // Tìm sản phẩm trong Flash Sale
+    const fsItem = flashSale?.items?.find(
+      (item) => item.productId === product.productId
+    );
+
+    // LOGIC: Chỉ áp dụng Flash Sale nếu CÒN SUẤT
+    if (fsItem && fsItem.soldCount < fsItem.quantity) {
+      const fsRemaining = fsItem.quantity - fsItem.soldCount;
+
+      if (normalStock === 0) {
+        return {
+          isFlashSale: false,
+          stock: 0,
+          price: product.price,
+          originalPrice: product.price,
+        };
+      }
+
+      const effectiveStock = Math.min(normalStock, fsRemaining);
+
+      return {
+        isFlashSale: true,
+        stock: effectiveStock,
+        price: fsItem.flashSalePrice, // Giá Flash Sale
+        originalPrice: product.price,
+      };
+    }
+
+    // Giá thường
+    return {
+      isFlashSale: false,
+      stock: normalStock,
+      price: product.price,
+      originalPrice: product.price,
+    };
   };
 
   const handleSelectItem = (orderDetailId) => {
@@ -59,24 +125,19 @@ export default function CartPage() {
     }));
   };
 
-  // --- LOGIC CHỌN TẤT CẢ (ĐÃ SỬA) ---
   const handleSelectAll = (checked) => {
     const newSelected = {};
     cartOrders.forEach((order) => {
       order.orderDetails.forEach((item) => {
-        // Quan trọng: Kiểm tra tồn kho trước khi cho phép chọn
-        // Sử dụng ?? để chấp nhận giá trị 0
-        const stock = item.product.quantity ?? 999;
-
+        const { stock } = getProductStockInfo(item.product);
         if (stock > 0) {
           newSelected[item.orderDetailId] = checked;
         } else {
-          newSelected[item.orderDetailId] = false; // Hết hàng thì luôn false
+          newSelected[item.orderDetailId] = false;
         }
       });
     });
     setSelectedItems(newSelected);
-
     if (checked) messageApi.success("Đã chọn tất cả sản phẩm có sẵn");
   };
 
@@ -86,18 +147,21 @@ export default function CartPage() {
         ...order,
         orderDetails: order.orderDetails.map((item) => {
           if (item.orderDetailId === orderDetailId) {
-            // SỬA: Dùng ?? để nếu quantity = 0 thì vẫn lấy 0
-            const maxStock = item.product.quantity ?? 999;
+            const { stock, isFlashSale } = getProductStockInfo(item.product);
 
-            // Nếu hết hàng thì chặn luôn không cho thay đổi (phòng hờ)
-            if (maxStock === 0) return item;
+            if (stock === 0) return item;
 
             const newQty = item.quantity + delta;
-
             if (newQty < 1) return item;
 
-            if (newQty > maxStock) {
-              messageApi.warning(`Sản phẩm chỉ còn lại ${maxStock} món!`);
+            if (newQty > stock) {
+              if (isFlashSale) {
+                messageApi.warning(
+                  `Chỉ còn ${stock} suất Flash Sale giá ưu đãi!`
+                );
+              } else {
+                messageApi.warning(`Kho chỉ còn ${stock} sản phẩm!`);
+              }
               return item;
             }
 
@@ -119,13 +183,11 @@ export default function CartPage() {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (!res.ok) throw new Error("Xóa sản phẩm thất bại");
 
       setCartOrders((prev) =>
         prev.filter((order) => order.orderId !== orderId)
       );
-
       messageApi.success("Đã xóa sản phẩm khỏi giỏ hàng");
       refreshCartCount(userId, token);
     } catch (error) {
@@ -138,7 +200,10 @@ export default function CartPage() {
     return (
       sum +
       order.orderDetails.reduce((s, item) => {
-        return s + (selectedItems[item.orderDetailId] ? item.subtotal : 0);
+        if (!selectedItems[item.orderDetailId]) return s;
+        const { isFlashSale, price } = getProductStockInfo(item.product);
+        const finalPrice = isFlashSale ? price : item.unitPrice;
+        return s + finalPrice * item.quantity;
       }, 0)
     );
   }, 0);
@@ -150,7 +215,18 @@ export default function CartPage() {
           (item) => selectedItems[item.orderDetailId]
         );
         if (selectedOrderDetails.length === 0) return null;
-        return { ...order, orderDetails: selectedOrderDetails };
+
+        // Cập nhật giá và cờ Flash Sale trước khi sang Checkout
+        const updatedDetails = selectedOrderDetails.map((detail) => {
+          const { isFlashSale, price } = getProductStockInfo(detail.product);
+          return {
+            ...detail,
+            unitPrice: price,
+            isFlashSale: isFlashSale,
+          };
+        });
+
+        return { ...order, orderDetails: updatedDetails };
       })
       .filter(Boolean);
 
@@ -158,17 +234,16 @@ export default function CartPage() {
       return messageApi.error("Vui lòng chọn ít nhất 1 sản phẩm để đặt hàng!");
     }
 
-    // Kiểm tra lại lần cuối
     const hasInvalidQuantity = selectedOrders.some((order) =>
       order.orderDetails.some((item) => {
-        const stock = item.product.quantity ?? 999;
+        const { stock } = getProductStockInfo(item.product);
         return item.quantity > stock || stock === 0;
       })
     );
 
     if (hasInvalidQuantity) {
       return messageApi.error(
-        "Một số sản phẩm không đủ số lượng tồn kho. Vui lòng kiểm tra lại!"
+        "Một số sản phẩm vượt quá số lượng cho phép. Vui lòng kiểm tra lại!"
       );
     }
 
@@ -187,7 +262,6 @@ export default function CartPage() {
     }
 
     const oldOrderIds = selectedOrders.map((o) => o.orderId);
-
     navigate("/checkout", {
       state: {
         userId,
@@ -224,12 +298,12 @@ export default function CartPage() {
     );
   }
 
-  // Đếm tổng số lượng sản phẩm có thể chọn (tồn kho > 0) để hiển thị ở checkbox Chọn tất cả
   const availableItemsCount = cartOrders.reduce(
     (acc, order) =>
       acc +
-      order.orderDetails.filter((item) => (item.product.quantity ?? 999) > 0)
-        .length,
+      order.orderDetails.filter(
+        (item) => getProductStockInfo(item.product).stock > 0
+      ).length,
     0
   );
 
@@ -248,7 +322,6 @@ export default function CartPage() {
                 <input
                   type="checkbox"
                   className="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500"
-                  // Checked nếu số lượng item được chọn == tổng số item khả dụng
                   checked={
                     availableItemsCount > 0 &&
                     Object.values(selectedItems).filter(
@@ -266,9 +339,9 @@ export default function CartPage() {
             <div className="space-y-4">
               {cartOrders.map((order) =>
                 order.orderDetails.map((item) => {
-                  // LOGIC QUAN TRỌNG TẠI ĐÂY
-                  // Dùng ?? để bắt chính xác số 0
-                  const stock = item.product.quantity ?? 999;
+                  const { isFlashSale, stock, price } = getProductStockInfo(
+                    item.product
+                  );
                   const isOutOfStock = stock === 0;
                   const isMaxReached = item.quantity >= stock;
 
@@ -281,6 +354,9 @@ export default function CartPage() {
                             ? "bg-gray-50 opacity-75 grayscale-[0.5]"
                             : ""
                         } 
+                        ${
+                          isFlashSale ? "border-orange-200 bg-orange-50/10" : ""
+                        }
                       `}
                     >
                       <div className="flex gap-4 sm:gap-6">
@@ -292,7 +368,7 @@ export default function CartPage() {
                             onChange={() =>
                               handleSelectItem(item.orderDetailId)
                             }
-                            disabled={isOutOfStock} // Disable checkbox nếu hết hàng
+                            disabled={isOutOfStock}
                           />
                         </div>
 
@@ -302,12 +378,17 @@ export default function CartPage() {
                             alt={item.product.productName}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
-                          {/* Overlay nếu hết hàng */}
                           {isOutOfStock && (
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                               <span className="bg-black/70 text-white text-xs px-2 py-1 rounded font-bold uppercase">
                                 Hết hàng
                               </span>
+                            </div>
+                          )}
+                          {/* Tag Flash Sale */}
+                          {!isOutOfStock && isFlashSale && (
+                            <div className="absolute top-0 left-0 bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-br-lg font-bold flex items-center gap-1">
+                              <Zap size={10} fill="currentColor" /> SALE
                             </div>
                           )}
                         </div>
@@ -332,22 +413,49 @@ export default function CartPage() {
                                 <Trash2 size={20} />
                               </button>
                             </div>
-                            <p className="text-gray-500 text-sm mt-1">
-                              Đơn giá: {item.unitPrice.toLocaleString()}₫
+
+                            <p className="text-gray-500 text-sm mt-1 flex items-center gap-2">
+                              Đơn giá:
+                              {isFlashSale ? (
+                                <>
+                                  <span className="line-through text-xs">
+                                    {item.product.price?.toLocaleString()}₫
+                                  </span>
+                                  <span className="text-orange-600 font-bold">
+                                    {price.toLocaleString()}₫
+                                  </span>
+                                </>
+                              ) : (
+                                <span>{price.toLocaleString()}₫</span>
+                              )}
                             </p>
 
-                            {/* HIỂN THỊ TRẠNG THÁI KHO */}
+                            {/* HIỂN THỊ TRẠNG THÁI */}
                             {isOutOfStock ? (
                               <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-bold">
-                                <Ban size={12} />
-                                Đã hết hàng
+                                <Ban size={12} /> Đã hết hàng
+                              </p>
+                            ) : isFlashSale ? (
+                              <p className="text-xs text-orange-600 mt-1 flex items-center gap-1 font-medium animate-pulse">
+                                <Zap size={12} fill="currentColor" /> Chỉ còn{" "}
+                                {stock} suất Flash Sale
                               </p>
                             ) : (
                               <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
-                                <AlertCircle size={12} />
-                                Còn lại trong kho: {stock}
+                                <AlertCircle size={12} /> Còn lại trong kho:{" "}
+                                {stock}
                               </p>
                             )}
+
+                            {!isOutOfStock &&
+                              !isFlashSale &&
+                              flashSale?.items?.some(
+                                (i) => i.productId === item.product.productId
+                              ) && (
+                                <p className="text-[10px] text-gray-400 italic mt-0.5">
+                                  *Đã hết suất khuyến mãi Flash Sale
+                                </p>
+                              )}
                           </div>
 
                           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mt-4">
@@ -363,7 +471,7 @@ export default function CartPage() {
                                   handleQuantityChange(item.orderDetailId, -1)
                                 }
                                 className="p-2 hover:bg-gray-100 text-gray-600 transition-colors rounded-l-lg disabled:opacity-50"
-                                disabled={item.quantity <= 1 || isOutOfStock} // Disable nút giảm
+                                disabled={item.quantity <= 1 || isOutOfStock}
                               >
                                 <Minus size={16} />
                               </button>
@@ -376,7 +484,7 @@ export default function CartPage() {
                                 onClick={() =>
                                   handleQuantityChange(item.orderDetailId, 1)
                                 }
-                                disabled={isMaxReached || isOutOfStock} // Disable nút tăng
+                                disabled={isMaxReached || isOutOfStock}
                                 className={`p-2 transition-colors rounded-r-lg ${
                                   isMaxReached || isOutOfStock
                                     ? "bg-gray-100 text-gray-300 cursor-not-allowed"
@@ -398,7 +506,7 @@ export default function CartPage() {
                                     : "text-red-600"
                                 }`}
                               >
-                                {item.subtotal.toLocaleString()}₫
+                                {(price * item.quantity).toLocaleString()}₫
                               </span>
                             </div>
                           </div>
@@ -412,9 +520,6 @@ export default function CartPage() {
           </div>
 
           <div className="lg:col-span-4 mt-8 lg:mt-0">
-            {/* ... Phần Tổng giỏ hàng giữ nguyên ... */}
-            {/* (Đã có sẵn trong code gốc của bạn, không cần thay đổi logic ở đây, 
-                 vì selectedItems đã tự lọc bỏ sản phẩm hết hàng nên tổng tiền sẽ đúng) */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:sticky lg:top-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6">
                 Tổng giỏ hàng
@@ -424,7 +529,6 @@ export default function CartPage() {
                   <span>Tạm tính</span>
                   <span>{selectedTotal.toLocaleString()}₫</span>
                 </div>
-                {/* ... */}
                 <div className="border-t border-dashed border-gray-200 pt-4 flex justify-between items-center">
                   <span className="font-bold text-gray-900 text-lg">
                     Tổng cộng
@@ -437,13 +541,13 @@ export default function CartPage() {
 
               <button
                 onClick={handleCheckout}
-                disabled={selectedTotal === 0} // Disable nút nếu không chọn gì
+                disabled={selectedTotal === 0}
                 className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 group transition-all
-                    ${
-                      selectedTotal === 0
-                        ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
-                        : "bg-red-600 text-white shadow-red-200 hover:bg-red-700 hover:shadow-xl"
-                    }
+                  ${
+                    selectedTotal === 0
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
+                      : "bg-red-600 text-white shadow-red-200 hover:bg-red-700 hover:shadow-xl"
+                  }
                 `}
               >
                 Tiến hành đặt hàng
