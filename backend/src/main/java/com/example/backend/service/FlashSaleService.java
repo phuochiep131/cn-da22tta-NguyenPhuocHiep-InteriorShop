@@ -16,4 +16,7 @@ public interface FlashSaleService {
     void deleteFlashSale(Integer id);
     void updateStatus(Integer id, FlashSale.Status status);
     FlashSaleDTO updateFlashSale(Integer id, FlashSaleDTO dto);
+
+    void restoreFlashSaleQuantity(String productId, int quantity);
+    boolean deductFlashSaleQuantity(String productId, int quantity);
 }

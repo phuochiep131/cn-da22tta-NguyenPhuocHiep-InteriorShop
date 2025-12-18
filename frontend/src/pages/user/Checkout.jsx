@@ -226,43 +226,29 @@ export default function Checkout() {
       return messageApi.warning("Vui lòng chọn địa chỉ nhận hàng!");
     if (!paymentMethod)
       return messageApi.warning("Vui lòng chọn phương thức thanh toán!");
-    if (!productsToPay.length)
-      return messageApi.warning("Không có sản phẩm để thanh toán!");
-
-    if (selectedCouponId) {
-      const finalCoupon = coupons.find((c) => c.couponId === selectedCouponId);
-      if (finalCoupon && isCouponExpired(finalCoupon.endDate)) {
-        setSelectedCouponId(null);
-        setCouponValue(0);
-        return messageApi.error(
-          `Mã ${finalCoupon.code} đã hết hạn. Vui lòng chọn mã khác.`
-        );
-      }
-    }
 
     const orderPayload = {
       userId: Cookies.get("user_id"),
       paymentMethodId: paymentMethod,
       shippingAddress: `${selectedAddress.name} - ${selectedAddress.phone} - ${selectedAddress.address}`,
       customerNote: note,
-      orderDate: new Date().toISOString(),
-      couponId: selectedCouponId ? parseInt(selectedCouponId) : null,
+      couponId: selectedCouponId,
       totalAmount: totalPriceWithCoupon,
       isOrder: true,
       orderStatus: "pending",
       orderDetails: productsToPay.map((item) => ({
         product: { productId: item.product?.productId || item.productId },
-        quantity: item.quantity || 1,
+        quantity: item.quantity,
         unitPrice: item.unitPrice || item.product?.price || item.price,
         originalUnitPrice:
-          item.originalUnitPrice ||
-          item.originalPrice ||
-          item.product?.price ||
-          item.price,
+          item.originalUnitPrice || item.product?.price || item.price,
+        // TRUYỀN FLAG ISFLASHSALE ĐỂ BACKEND TRỪ KHO FLASH SALE
+        isFlashSale: item.isFlashSale ? 1 : 0,
       })),
       oldOrderIds,
     };
 
+    // LUỒNG THANH TOÁN VNPAY (PM002)
     if (paymentMethod === "PM002") {
       try {
         const vnpRes = await fetch(
@@ -274,68 +260,30 @@ export default function Checkout() {
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
-              amount: totalPriceWithCoupon,
+              amount: Math.round(totalPriceWithCoupon),
               language: "vn",
             }),
           }
         );
-
-        if (!vnpRes.ok) {
-          const errorBody = await vnpRes.text();
-          console.error("VNPAY API Error Response:", errorBody);
-          return messageApi.error("Không thể kết nối VNPAY");
-        }
-
         const vnpData = await vnpRes.json();
-
-        if (vnpData.code === "00" && vnpData.data) {
-          sessionStorage.setItem(
-            "pendingOrder",
-            JSON.stringify({
-              singleProduct,
-              items,
-              oldOrderIds,
-              note,
-              paymentMethod,
-              shippingAddress: orderPayload.shippingAddress, // Lưu địa chỉ đã chọn
-              couponId: selectedCouponId,
-              buyQuantity: state?.quantity || 1,
-            })
-          );
+        if (vnpData.code === "00") {
+          // Lưu lại order payload để xử lý sau khi VNPAY redirect về
+          sessionStorage.setItem("pendingOrder", JSON.stringify(orderPayload));
           window.location.href = vnpData.data;
-          return;
-        } else {
-          return messageApi.error("Không tạo được liên kết thanh toán VNPAY!");
         }
-      } catch (err) {
-        console.error(err);
-        return messageApi.error("Lỗi khi gọi VNPAY!");
+      } catch {
+        messageApi.error("Không thể kết nối cổng thanh toán!");
       }
+      return;
     }
 
-    // COD Order
-    const generateTransactionId = () => {
-      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-      let rand = "";
-      for (let i = 0; i < 10; i++) {
-        rand += chars[Math.floor(Math.random() * chars.length)];
-      }
-      return "TM" + rand;
-    };
-
+    // LUỒNG THANH TOÁN COD
     try {
-      let res;
       const apiPath = oldOrderIds?.length
         ? "/api/orders/replace"
         : "/api/orders";
-      const method = items.length === 1 && state?.order ? "PUT" : "POST";
-      const url =
-        items.length === 1 && state?.order
-          ? `http://localhost:8080/api/orders/${state.order.orderId}`
-          : `http://localhost:8080${apiPath}`;
-
-      res = await fetch(url, {
-        method: method,
+      const res = await fetch(`http://localhost:8080${apiPath}`, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -343,57 +291,31 @@ export default function Checkout() {
         body: JSON.stringify(orderPayload),
       });
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          throw new Error(
-            errorJson.message || errorJson.error || "Đặt hàng thất bại"
-          );
-        } catch {
-          throw new Error(errorText || "Đặt hàng thất bại");
-        }
-      }
+      if (!res.ok) throw new Error(await res.text());
 
       const orderData = await res.json();
-      const createdOrderId = orderData.orderId;
 
-      if (paymentMethod === "PM001") {
-        const transactionId = generateTransactionId();
-        const paymentPayload = {
-          orderId: createdOrderId,
+      // Tạo Payment record trạng thái Pending
+      await fetch("http://localhost:8080/api/payments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          orderId: orderData.orderId,
           paymentMethodId: paymentMethod,
-          transactionId: transactionId,
+          transactionId: "COD-" + Date.now(),
           amount: totalPriceWithCoupon,
           paymentStatus: "Pending",
-        };
+        }),
+      });
 
-        const payRes = await fetch("http://localhost:8080/api/payments", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(paymentPayload),
-        });
-
-        if (!payRes.ok) {
-          console.error("Tạo thanh toán thất bại");
-          messageApi.error("Không thể tạo thanh toán!");
-        }
-
-        messageApi.success("Đặt hàng thành công!");
-        setTimeout(() => {
-          navigate("/purchase");
-        }, 2000);
-        return;
-      }
-      navigate("/order");
+      messageApi.success("Đặt hàng thành công!");
+      sessionStorage.removeItem("pendingOrder");
+      setTimeout(() => navigate("/purchase"), 1500);
     } catch (err) {
-      console.error("Lỗi đặt hàng cuối cùng:", err);
-      messageApi.error(
-        err.message || "Không thể tạo đơn hàng. Vui lòng thử lại."
-      );
+      messageApi.error("Lỗi: " + err.message);
     }
   };
 

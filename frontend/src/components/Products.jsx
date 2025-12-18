@@ -6,10 +6,88 @@ import {
 } from "@ant-design/icons";
 import { Link, useSearchParams } from "react-router-dom";
 import { message, Empty, Spin, Drawer } from "antd";
-import { Eye, ShoppingCart, Filter, X, Grid, Zap } from "lucide-react";
+import { Eye, ShoppingCart, Filter, X, Grid, Zap, Clock } from "lucide-react";
 import Cookies from "js-cookie";
 import { CartContext } from "../context/CartContext.jsx";
-import dayjs from "dayjs";
+
+const FlashSaleTimer = ({ endDate }) => {
+  const calculateTimeLeft = () => {
+    const difference = +new Date(endDate) - +new Date();
+    let timeLeft = {};
+
+    if (difference > 0) {
+      timeLeft = {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((difference / 1000 / 60) % 60),
+        seconds: Math.floor((difference / 1000) % 60),
+      };
+    } else {
+      return null;
+    }
+    return timeLeft;
+  };
+
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [endDate]);
+
+  if (!timeLeft)
+    return <span className="text-sm font-bold text-white">Đã kết thúc</span>;
+
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const timeBoxClass =
+    "bg-[#6b2a2a] text-white rounded px-2 py-1 flex items-baseline gap-1 min-w-[65px] justify-center";
+
+  return (
+    <div className="flex items-center justify-center gap-3 rounded-lg px-4 py-1.5">
+      <div className="flex items-center gap-1.5">
+        <Clock size={18} className="text-white" />
+        <span className="text-yellow-300 font-bold text-base uppercase tracking-wide">
+          Kết thúc trong
+        </span>
+      </div>
+
+      <div className="flex items-center gap-1.5 font-bold">
+        {timeLeft.days > 0 && (
+          <>
+            <div className={timeBoxClass}>
+              <span className="text-lg">{pad(timeLeft.days)}</span>
+              <span className="text-xs font-normal">ngày</span>
+            </div>
+            <span className="text-white">:</span>
+          </>
+        )}
+
+        <div className={timeBoxClass}>
+          <span className="text-lg">{pad(timeLeft.hours)}</span>
+          <span className="text-xs font-normal">giờ</span>
+        </div>
+
+        <span className="text-white">:</span>
+
+        <div className={timeBoxClass}>
+          <span className="text-lg">{pad(timeLeft.minutes)}</span>
+          <span className="text-xs font-normal">phút</span>
+        </div>
+
+        <span className="text-white">:</span>
+
+        <div className={timeBoxClass}>
+          <span className="text-lg">{pad(timeLeft.seconds)}</span>
+          <span className="text-xs font-normal">giây</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function Products() {
   const [products, setProducts] = useState([]);
@@ -112,8 +190,12 @@ export default function Products() {
     };
   };
 
+  // --- [ĐÃ SỬA] LỌC SẢN PHẨM HẾT SUẤT FLASH SALE ---
   const flashSaleList =
     flashSale?.items
+      // 1. Lọc bỏ những item đã bán hết suất (soldCount >= quantity)
+      ?.filter((fsItem) => fsItem.soldCount < fsItem.quantity)
+      // 2. Sau đó mới map sang thông tin sản phẩm đầy đủ
       ?.map((fsItem) => {
         const fullProduct = products.find(
           (p) => p.productId === fsItem.productId
@@ -160,15 +242,26 @@ export default function Products() {
     setMobileFilterOpen(false);
   };
 
+  // --- LOGIC MUA HÀNG ---
   const handleAddToCart = async (product) => {
     if (!token) {
       messageApi.warning("Vui lòng đăng nhập!");
       return;
     }
 
-    if (product.quantity <= 0) return;
+    const { finalPrice, isFlashSale, fsQuantity, fsSold } =
+      getProductPriceInfo(product);
 
-    const { finalPrice } = getProductPriceInfo(product);
+    // Kiểm tra tồn kho trước khi gửi request
+    if (isFlashSale) {
+      if (fsSold >= fsQuantity) {
+        messageApi.error("Sản phẩm Flash Sale này đã hết suất!");
+        return;
+      }
+    } else if (product.quantity <= 0) {
+      messageApi.error("Sản phẩm đã hết hàng!");
+      return;
+    }
 
     const orderPayload = {
       userId: Cookies.get("user_id"),
@@ -182,6 +275,7 @@ export default function Products() {
           quantity: 1,
           unitPrice: finalPrice,
           originalUnitPrice: product.price,
+          isFlashSale: isFlashSale ? 1 : 0,
         },
       ],
     };
@@ -208,7 +302,6 @@ export default function Products() {
     }
   };
 
-  // --- PRODUCT CARD COMPONENT ---
   const ProductCard = ({ prod, isFsSection = false }) => {
     const {
       finalPrice,
@@ -231,9 +324,7 @@ export default function Products() {
             : "border-gray-100"
         } overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col relative`}
       >
-        {/* Image Area */}
         <div className="relative pt-[100%] bg-gray-100 overflow-hidden">
-          {/* Tag Giảm giá */}
           {discountPercent > 0 && !isOutOfStock && (
             <div
               className={`absolute top-2 left-2 z-10 text-white text-[10px] sm:text-xs font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1 ${
@@ -245,7 +336,6 @@ export default function Products() {
             </div>
           )}
 
-          {/* --- LỚP PHỦ HẾT HÀNG --- */}
           {isOutOfStock && (
             <div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center backdrop-blur-[1px]">
               <span className="text-white font-bold text-lg border-2 border-white px-4 py-1 tracking-widest uppercase transform -rotate-12">
@@ -265,7 +355,6 @@ export default function Products() {
             }`}
           />
 
-          {/* Hover Actions (Chỉ hiện khi CÒN HÀNG) */}
           {!isOutOfStock && (
             <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3 backdrop-blur-[1px] z-10">
               <button
@@ -284,7 +373,6 @@ export default function Products() {
           )}
         </div>
 
-        {/* Info Area */}
         <div className="p-4 flex flex-col flex-grow">
           <Link
             to={`/product/${prod.productId}`}
@@ -330,7 +418,6 @@ export default function Products() {
             </div>
           </div>
 
-          {/* --- NÚT BẤM (Chỉ hiện khi CÒN HÀNG) --- */}
           {!isOutOfStock && (
             <button
               onClick={() => handleAddToCart(prod)}
@@ -469,22 +556,19 @@ export default function Products() {
         {/* FLASH SALE AREA */}
         {flashSale && flashSaleList.length > 0 && (
           <div className="mt-6 mb-8">
-            <div className="bg-gradient-to-r from-orange-500 to-red-600 rounded-t-xl p-4 flex items-center justify-between text-white shadow-lg">
+            <div className="bg-gradient-to-r from-orange-500 to-red-600 rounded-t-xl p-4 flex flex-wrap items-center justify-between text-white shadow-lg gap-4">
               <div className="flex items-center gap-3">
                 <ThunderboltFilled className="text-3xl text-yellow-300 animate-pulse" />
                 <div>
                   <h2 className="text-xl sm:text-2xl font-black italic uppercase tracking-wider text-white drop-shadow-md">
                     {flashSale.name}
                   </h2>
-                  <div className="flex items-center gap-2 text-sm font-medium opacity-90">
-                    <span className="bg-black/20 px-2 py-0.5 rounded">
-                      Kết thúc:{" "}
-                      {dayjs(flashSale.endDate).format("HH:mm - DD/MM")}
-                    </span>
-                  </div>
                 </div>
               </div>
+
+              <FlashSaleTimer endDate={flashSale.endDate} />
             </div>
+
             <div className="bg-orange-50 border-x border-b border-orange-200 p-4 rounded-b-xl shadow-sm">
               <div className="flex overflow-x-auto gap-4 pb-2 scrollbar-hide">
                 {flashSaleList.map((prod) => (

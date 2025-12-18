@@ -10,6 +10,7 @@ public class OrderDetailCreateDTO {
     private int quantity;
     private BigDecimal unitPrice;
     private BigDecimal originalUnitPrice;
+    private Integer isFlashSale;
 
     @Data
     public static class ProductIdWrapper {

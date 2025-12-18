@@ -15,6 +15,7 @@ public class OrderDetailDTO {
     private BigDecimal unitPrice;
     private BigDecimal originalUnitPrice;
     private BigDecimal subtotal;
+    private Integer isFlashSaleFlag;
 
     public OrderDetailDTO(OrderDetail detail) {
         this.orderDetailId = detail.getOrderDetailId();
@@ -23,5 +24,6 @@ public class OrderDetailDTO {
         this.unitPrice = detail.getUnitPrice();
         this.originalUnitPrice = detail.getOriginalUnitPrice();
         this.subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        this.isFlashSaleFlag = detail.getIsFlashSale();
     }
 }
