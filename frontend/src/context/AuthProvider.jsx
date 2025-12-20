@@ -24,6 +24,12 @@ const AuthProvider = ({ children }) => {
           sameSite: "Lax",
         });
       }
+      if (data.email) {
+        Cookies.set("user_email", data.email, {
+          expires: 1 / 24,
+          sameSite: "Lax",
+        });
+      }
       return data; 
     } catch (error) {
       console.error("❌ Lỗi khi tải profile:", error);

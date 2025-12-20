@@ -18,7 +18,6 @@ export default function MainMenu() {
     { name: "Trang chủ", path: "/" },
     { name: "Sản phẩm", path: "/products", dropdown: true },
     { name: "Khuyến mãi", path: "/promotions" },
-    { name: "Góc cảm hứng", path: "/technology" },
     { name: "Liên hệ", path: "/contact" },
   ];
 

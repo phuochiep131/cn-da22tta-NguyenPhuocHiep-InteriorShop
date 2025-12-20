@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { message } from "antd";
-import { CheckCircle, XCircle, Loader2, ShieldCheck } from "lucide-react"; // Import thêm icons
+import { CheckCircle, XCircle, Loader2, ShieldCheck } from "lucide-react";
 import Cookies from "js-cookie";
+import { AuthContext } from "../../context/AuthContext";
+import { sendInvoiceEmail } from "../EmailService"; 
 
 const generateTransactionId = () =>
   "TM" + Math.random().toString(36).substring(2, 12).toUpperCase();
@@ -12,64 +14,19 @@ export default function PaymentReturn() {
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
   const hasFetched = useRef(false);
-  const [loadingMessage, setLoadingMessage] = useState("Đang xử lý giao dịch...");
+  const [loadingMessage, setLoadingMessage] = useState(
+    "Đang xử lý giao dịch..."
+  );
   const token = Cookies.get("jwt");
 
-  // Lấy mã giao dịch từ URL để hiển thị cho đẹp (Logic UI only)
+  // Lấy mã giao dịch từ URL
   const queryParams = new URLSearchParams(location.search);
   const vnpTransactionNo = queryParams.get("vnp_TransactionNo");
 
+  // [QUAN TRỌNG] Lấy dữ liệu đã được build sẵn từ Checkout
   const pendingOrder = JSON.parse(
     sessionStorage.getItem("pendingOrder") || "{}"
   );
-
-  const buildOrderPayload = () => {
-    const {
-      singleProduct,
-      items,
-      oldOrderIds,
-      note,
-      paymentMethod,
-      couponId,
-      buyQuantity,
-      shippingAddress,
-    } = pendingOrder;
-
-    const productsToPay = [
-      ...(items || []),
-      ...(singleProduct
-        ? [{ ...singleProduct, quantity: buyQuantity || 1 }] // [SỬA 2] Dùng buyQuantity ở đây
-        : []),
-    ];
-
-    const totalPrice = productsToPay.reduce(
-      (sum, item) =>
-        sum +
-        (item.subtotal ||
-          (item.product?.price || item.price) * (item.quantity || 1)),
-      0
-    );
-
-    return {
-      userId: Cookies.get("user_id"),
-      paymentMethodId: paymentMethod,
-      shippingAddress: shippingAddress || "",
-      customerNote: note || "",
-      orderDate: new Date().toISOString(),
-      couponId: couponId ? parseInt(couponId) : null,
-      totalAmount: totalPrice,
-      isOrder: true,
-      orderStatus: "pending",
-      orderDetails: productsToPay.map((item) => ({
-        product: { productId: item.product?.productId || item.productId },
-        quantity: item.quantity || 1, // Lúc này item.quantity đã đúng nhờ bước trên
-        unitPrice: item.unitPrice || item.product?.price || item.price,
-        originalUnitPrice:
-          item.originalUnitPrice || item.product?.price || item.price,
-      })),
-      oldOrderIds: oldOrderIds || [],
-    };
-  };
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -81,7 +38,7 @@ export default function PaymentReturn() {
 
     if (!responseCode) {
       messageApi.error("Không tìm thấy dữ liệu giao dịch!");
-      setTimeout(() => navigate("/checkout", { state: pendingOrder }), 3000);
+      setTimeout(() => navigate("/checkout"), 3000); // Quay về checkout nếu lỗi
       return;
     }
 
@@ -90,41 +47,39 @@ export default function PaymentReturn() {
         if (responseCode !== "00") {
           messageApi.error("Thanh toán thất bại!");
           setLoadingMessage("Thanh toán thất bại! Quay về checkout...");
-          setTimeout(
-            () => navigate("/checkout", { state: pendingOrder }),
-            3000
-          );
+          setTimeout(() => navigate("/checkout"), 3000);
           return;
         }
 
-        setLoadingMessage("Thanh toán thành công! Đang lưu đơn hàng...");
-        const payload = buildOrderPayload();
+        // Kiểm tra xem dữ liệu trong Session có hợp lệ không
+        if (!pendingOrder || !pendingOrder.orderDetails) {
+          throw new Error("Mất dữ liệu đơn hàng (Session expired).");
+        }
 
+        setLoadingMessage("Thanh toán thành công! Đang lưu đơn hàng...");
+
+        // [SỬA ĐỔI] Sử dụng trực tiếp pendingOrder từ Checkout, không build lại
         const orderPayload = {
-          ...payload,
+          ...pendingOrder,
           transactionId: transactionIdFromVNPAY || generateTransactionId(),
+          // Đảm bảo status là pending khi lưu
+          orderStatus: "pending",
         };
 
+        // Gọi API tạo đơn hàng
         let orderRes;
-        if (pendingOrder.oldOrderIds?.length) {
-          orderRes = await fetch("http://localhost:8080/api/orders/replace", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(orderPayload),
-          });
-        } else {
-          orderRes = await fetch("http://localhost:8080/api/orders", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(orderPayload),
-          });
-        }
+        const apiEndpoint = pendingOrder.oldOrderIds?.length
+          ? "http://localhost:8080/api/orders/replace"
+          : "http://localhost:8080/api/orders";
+
+        orderRes = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(orderPayload),
+        });
 
         if (!orderRes.ok) {
           const errText = await orderRes.text();
@@ -135,11 +90,13 @@ export default function PaymentReturn() {
         const orderData = await orderRes.json();
         const createdOrderId = orderData.orderId;
 
+        // Gọi API lưu thanh toán
+        // [SỬA ĐỔI] Lấy totalAmount từ pendingOrder (đã trừ voucher ở Checkout)
         const paymentPayload = {
           orderId: createdOrderId,
           paymentMethodId: "PM002",
           transactionId: transactionIdFromVNPAY,
-          amount: payload.totalAmount,
+          amount: pendingOrder.totalAmount,
           paymentStatus: "Completed",
         };
 
@@ -158,30 +115,32 @@ export default function PaymentReturn() {
           throw new Error("Không thể lưu giao dịch Payment!");
         }
 
+        // Xóa session sau khi thành công
         sessionStorage.removeItem("pendingOrder");
 
         messageApi.success("Thanh toán thành công!");
-        messageApi.success("Đặt hàng thành công!");
+        messageApi.success("Đặt hàng thành công!");        
+        await sendInvoiceEmail(createdOrderId);
         setTimeout(() => navigate("/purchase"), 2000);
       } catch (err) {
         console.error(err);
-        messageApi.error("Thanh toán thành công nhưng lưu dữ liệu thất bại!");
-        setLoadingMessage("Lỗi khi lưu đơn! Quay về checkout...");
-        setTimeout(() => navigate("/checkout", { state: pendingOrder }), 3000);
+        messageApi.error(`Lỗi: ${err.message}`);
+        setLoadingMessage("Lỗi xử lý! Vui lòng liên hệ CSKH hoặc thử lại.");
+        // Không navigate về checkout ngay để user đọc lỗi, hoặc tùy logic của bạn
       }
     };
 
     fetchPaymentResult();
   }, []);
 
-  // Helper xác định trạng thái UI dựa trên text loadingMessage
+  // UI Helper
   const getStatusUI = () => {
     const msg = loadingMessage.toLowerCase();
     if (msg.includes("thất bại") || msg.includes("lỗi")) {
       return {
         icon: <XCircle className="w-16 h-16 text-red-500 mb-4" />,
         color: "text-red-600",
-        subText: "Vui lòng kiểm tra lại thông tin thanh toán.",
+        subText: "Vui lòng kiểm tra lại thông tin hoặc liên hệ hỗ trợ.",
       };
     }
     if (msg.includes("thành công")) {
@@ -203,24 +162,24 @@ export default function PaymentReturn() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       {contextHolder}
-      
+
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center border border-gray-100">
-        <div className="flex justify-center">
-          {statusUI.icon}
-        </div>
+        <div className="flex justify-center">{statusUI.icon}</div>
 
         <h2 className={`text-xl font-bold mb-2 ${statusUI.color}`}>
           {loadingMessage}
         </h2>
 
-        <p className="text-gray-500 mb-6 text-sm">
-          {statusUI.subText}
-        </p>
+        <p className="text-gray-500 mb-6 text-sm">{statusUI.subText}</p>
 
         {vnpTransactionNo && (
           <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
-            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Mã giao dịch VNPAY</p>
-            <p className="font-mono font-medium text-gray-700 break-all">{vnpTransactionNo}</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
+              Mã giao dịch VNPAY
+            </p>
+            <p className="font-mono font-medium text-gray-700 break-all">
+              {vnpTransactionNo}
+            </p>
           </div>
         )}
 

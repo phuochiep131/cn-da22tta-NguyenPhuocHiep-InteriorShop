@@ -63,6 +63,7 @@ public class Coupon {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public enum DiscountType {
-        percent
+        percent,
+        fixed
     }
 }

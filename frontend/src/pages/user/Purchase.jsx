@@ -102,9 +102,10 @@ export default function Purchase() {
       if (!res.ok) throw new Error("Không thể tải danh sách đơn hàng");
 
       const data = await res.json();
-      const sortedData = data.sort((a, b) =>
-        b.orderId.localeCompare(a.orderId)
-      );
+      console.log(data)
+      const sortedData = data
+        .filter((item) => item.isOrder === true)
+        .sort((a, b) => b.orderId.localeCompare(a.orderId));
 
       setOrders(sortedData);
       await refreshCartCount(userId, token);
@@ -260,7 +261,8 @@ export default function Purchase() {
               .map((order) => {
                 const statusConfig = getStatusConfig(order.orderStatus);
                 const canCancel =
-                  (order.orderStatus || "").toLowerCase() === "pending";
+                  (order.orderStatus || "").toLowerCase() === "pending" &&
+                  order.payment.paymentMethodId === "PM001";
 
                 return (
                   <div
@@ -442,11 +444,11 @@ export default function Purchase() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Phương thức:</span>
                     <span className="font-medium">
-                      {detailOrder.paymentMethodId === "PM001"
+                      {detailOrder.payment.paymentMethodId === "PM001"
                         ? "COD (Thanh toán khi nhận hàng)"
-                        : detailOrder.paymentMethodId?.includes("PM002")
+                        : detailOrder.payment.paymentMethodId?.includes("PM002")
                         ? "VNPay"
-                        : detailOrder.paymentMethodId}
+                        : detailOrder.payment.paymentMethodId}
                     </span>
                   </div>
 
