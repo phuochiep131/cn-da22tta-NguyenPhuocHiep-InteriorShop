@@ -18,6 +18,8 @@ import Home from "./pages/user/Home";
 import Login from "./pages/user/Login";
 import Register from "./pages/user/Register";
 import EditProfile from "./pages/user/profile/EditProfile";
+import PromotionsPage from "./pages/PromotionsPage";
+import ContactPage from "./pages/ContactPage";
 import Products from "./components/Products";
 import ProductDetail from "./pages/user/ProductDetail";
 import Checkout from "./pages/user/Checkout";
@@ -42,6 +44,8 @@ export default function App() {
           <Route path="/purchase" element={<Purchase />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/payment-return" element={<PaymentReturn />} />
+          <Route path="/promotions" element={<PromotionsPage />} />
+          <Route path="/contact" element={<ContactPage />} />
         </Route>
 
         <Route element={<AdminRoute />}>

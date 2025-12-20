@@ -86,6 +86,12 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public Order getOrderById(String orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với mã: " + orderId));
+    }
+
+    @Override
     @Transactional
     public Order createOrder(Order order) {
         order.setOrderId(generateOrderId());

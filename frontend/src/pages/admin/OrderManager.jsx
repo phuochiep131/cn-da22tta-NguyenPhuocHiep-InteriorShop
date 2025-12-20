@@ -198,7 +198,7 @@ export default function OrderManager() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error();
-      const data = await res.json();
+      const data = await res.json();      
       setOrders(data.sort((a, b) => b.orderId.localeCompare(a.orderId)));
     } catch {
       messageApi.error("Không thể tải danh sách đơn hàng");
@@ -307,10 +307,12 @@ export default function OrderManager() {
     },
     {
       title: "Phương thức",
-      dataIndex: "paymentMethodId",
+      // Sửa từ "paymentMethodId" thành ["payment", "paymentMethodId"]
+      dataIndex: ["payment", "paymentMethodId"],
       width: 130,
       align: "center",
       render: (val) => {
+        // Bây giờ val sẽ nhận được giá trị như "PM001" hoặc "PM002"
         const method = val ? val.toUpperCase() : "UNKNOWN";
         let color = "default";
         let icon = null;
@@ -491,7 +493,7 @@ export default function OrderManager() {
 
     // 4. [NEW] Lọc theo Phương thức thanh toán
     const matchMethod = paymentMethodFilter
-      ? (o.paymentMethodId || "")
+      ? (o.payment.paymentMethodId || "")
           .toLowerCase()
           .includes(paymentMethodFilter.toLowerCase())
       : true;
