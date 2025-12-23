@@ -22,8 +22,12 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 	long countByIsOrderTrue();
 	long countByIsOrderTrueAndOrderDateBefore(LocalDateTime date);
 
-	@Query("SELECT o.orderStatus, COUNT(o) FROM Order o WHERE o.isOrder = true GROUP BY o.orderStatus")
-	List<Object[]> countOrdersByStatus();
+	@Query("SELECT o.orderStatus, COUNT(o) FROM Order o " +
+			"WHERE o.isOrder = true " +
+			"AND o.orderDate BETWEEN :startDate AND :endDate " +
+			"GROUP BY o.orderStatus")
+	List<Object[]> countOrdersByStatus(@Param("startDate") LocalDateTime startDate,
+									   @Param("endDate") LocalDateTime endDate);
 
 	@Query("SELECT SUM(o.totalAmount) " +
 			"FROM Order o " +
