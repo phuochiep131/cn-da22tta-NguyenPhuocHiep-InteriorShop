@@ -2,9 +2,11 @@ package com.example.backend.controller;
 
 import com.example.backend.service.AdminDashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -22,8 +24,19 @@ public class AdminDashboardController {
     }
 
     @GetMapping("/orders/status")
-    public ResponseEntity<List<Map<String, Object>>> getOrderStatusStats() {
-        return ResponseEntity.ok(dashboardService.getOrderStatusStats());
+    public ResponseEntity<List<Map<String, Object>>> getOrderStatus(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+    ) {
+        if (startDate == null) {
+            startDate = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+        }
+        if (endDate == null) {
+            endDate = LocalDateTime.now();
+        }
+        List<Map<String, Object>> result = dashboardService.getOrderStatusStats(startDate, endDate);
+
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/categories/top")
@@ -67,6 +80,11 @@ public class AdminDashboardController {
     @GetMapping("/products/low-stock")
     public ResponseEntity<List<Map<String, Object>>> getLowStock() {
         return ResponseEntity.ok(dashboardService.getLowStockProducts());
+    }
+
+    @GetMapping("/products/stagnant")
+    public ResponseEntity<List<Map<String, Object>>> getStagnantProducts() {
+        return ResponseEntity.ok(dashboardService.getStagnantProducts());
     }
 
 }

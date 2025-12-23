@@ -39,6 +39,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     @Autowired
     private ProductRepository productRepository;
 
+
     @Override
     public Map<String, Object> getDashboardOverview() {
         Map<String, Object> stats = new HashMap<>();
@@ -99,21 +100,25 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     }
 
     @Override
-    public List<Map<String, Object>> getOrderStatusStats() {
+    public List<Map<String, Object>> getOrderStatusStats(LocalDateTime startDate, LocalDateTime endDate) {
 
-        List<Object[]> results = orderRepository.countOrdersByStatus();
+        List<Object[]> rawData = orderRepository.countOrdersByStatus(startDate, endDate);
+        List<Map<String, Object>> formattedResult = new ArrayList<>();
 
-        List<Map<String, Object>> stats = new ArrayList<>();
-
-        for (Object[] result : results) {
+        for (Object[] row : rawData) {
             Map<String, Object> item = new HashMap<>();
-            item.put("name", result[0].toString());
-            item.put("value", result[1]);
 
-            stats.add(item);
+            String statusName = (row[0] != null) ? row[0].toString() : "UNKNOWN";
+
+            Long count = (row[1] != null) ? (Long) row[1] : 0L;
+
+            item.put("name", statusName);
+            item.put("value", count);
+
+            formattedResult.add(item);
         }
 
-        return stats;
+        return formattedResult;
     }
 
     @Override
@@ -130,6 +135,25 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             stats.add(item);
         }
         return stats;
+    }
+
+    @Override
+    public List<Map<String, Object>> getStagnantProducts() {
+        // 3 tháng trước
+        LocalDateTime threeMonthsAgo = LocalDateTime.now().minusMonths(3);
+
+        List<Object[]> results = productRepository.findStagnantProducts(threeMonthsAgo, PageRequest.of(0, 10));
+
+        List<Map<String, Object>> response = new ArrayList<>();
+        for (Object[] row : results) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("name", row[0]);
+            item.put("stock", row[1]);
+            item.put("image", row[2]);
+            item.put("status", "Không bán được đơn nào trong 3 tháng");
+            response.add(item);
+        }
+        return response;
     }
 
     @Override

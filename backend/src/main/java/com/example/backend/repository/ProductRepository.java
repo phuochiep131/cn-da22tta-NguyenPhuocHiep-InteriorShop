@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Pageable;
+
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -22,6 +24,15 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 			"WHERE p.quantity < 10 " +
 			"ORDER BY p.quantity ASC")
 	List<Object[]> findLowStockProducts(Pageable pageable);
+
+	@Query("SELECT p.productName, p.quantity, p.imageUrl FROM Product p " +
+			"WHERE p.productId NOT IN (" +
+			"    SELECT od.product.productId FROM OrderDetail od " +
+			"    JOIN od.order o " +
+			"    WHERE o.orderDate >= :startDate" +
+			") " +
+			"ORDER BY p.quantity DESC")
+	List<Object[]> findStagnantProducts(@Param("startDate") LocalDateTime startDate, Pageable pageable);
 
 	@Query(value = "SELECT * FROM products WHERE quantity > 0 LIMIT 20", nativeQuery = true)
 	List<Product> findProductsForChatbot();

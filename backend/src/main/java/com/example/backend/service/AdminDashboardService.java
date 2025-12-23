@@ -1,5 +1,6 @@
 package com.example.backend.service;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.List;
 
@@ -9,7 +10,7 @@ public interface AdminDashboardService {
     Map<String, Object> getDashboardOverview();
 
     //Top
-    List<Map<String, Object>> getOrderStatusStats();
+    List<Map<String, Object>> getOrderStatusStats(LocalDateTime startDate, LocalDateTime endDate);
     List<Map<String, Object>> getTopSellingCategories();
     List<Map<String, Object>> getTopSellingProducts();
 
@@ -24,4 +25,5 @@ public interface AdminDashboardService {
 
     List<Map<String, Object>> getPeakHoursStats();
     List<Map<String, Object>> getLowStockProducts();
+    List<Map<String, Object>> getStagnantProducts();
 }

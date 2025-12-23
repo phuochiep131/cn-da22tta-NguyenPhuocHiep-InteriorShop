@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useCallback } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import {
   Card,
@@ -10,6 +10,9 @@ import {
   Avatar,
   Spin,
   Typography,
+  DatePicker,
+  Segmented,
+  Space,
 } from "antd";
 import {
   DollarCircleOutlined,
@@ -21,8 +24,11 @@ import {
   FireOutlined,
   BarChartOutlined,
   CrownOutlined,
-  ClockCircleOutlined, // Icon mới
-  AlertOutlined, // Icon mới
+  ClockCircleOutlined,
+  AlertOutlined,
+  PieChartOutlined,
+  CalendarOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
 import {
   AreaChart,
@@ -38,11 +44,13 @@ import {
   BarChart,
   Bar,
   Legend,
-  LabelList, // Component mới để hiện số liệu trên cột
+  LabelList,
 } from "recharts";
 import Cookies from "js-cookie";
+import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
 
 // --- DỮ LIỆU MẪU (MOCK DATA) ---
 const MOCK_KPI = {
@@ -55,7 +63,7 @@ const MOCK_KPI = {
   totalStock: 0,
 };
 
-const MOCK_CHART_DATA = [{ label: "Loading", actual: 0, estimated: 0 }];
+const MOCK_CHART_DATA = [{ label: "Loading", actual: 0 }];
 const MOCK_PIE_DATA = [{ name: "Loading", value: 1 }];
 
 // --- CONSTANTS ---
@@ -83,56 +91,100 @@ export default function AdminDashboard() {
   const token = Cookies.get("jwt");
   const { user } = useContext(AuthContext);
 
+  // --- STATE QUẢN LÝ ---
   const [loading, setLoading] = useState(true);
+  const [statusLoading, setStatusLoading] = useState(false); // Loading riêng cho PieChart
 
-  // Data States
+  // --- DATA STATES ---
   const [topCategories, setTopCategories] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [orderStatusData, setOrderStatusData] = useState(MOCK_PIE_DATA);
   const [topCustomers, setTopCustomers] = useState([]);
   const [comparisonData, setComparisonData] = useState(MOCK_CHART_DATA);
   const [kpiData, setKpiData] = useState(MOCK_KPI);
-
-  // State cho 2 biểu đồ mới
   const [peakHourData, setPeakHourData] = useState([]);
   const [lowStockData, setLowStockData] = useState([]);
+  const [stagnantData, setStagnantData] = useState([]);
 
-  // --- API CALLS ---
+  // --- FILTER STATE ---
+  // Mặc định lọc từ đầu tháng đến hiện tại
+  const [dateRange, setDateRange] = useState([
+    dayjs().startOf("month"),
+    dayjs(),
+  ]);
+
+  const BASE_URL = "http://localhost:8080/api/admin/dashboard";
+  const headers = { Authorization: `Bearer ${token}` };
+
+  // --- 1. API CALL RIÊNG CHO STATUS (Dùng useCallback để tránh re-render) ---
+  const fetchOrderStatus = useCallback(
+    async (start, end) => {
+      setStatusLoading(true);
+      try {
+        const url = `${BASE_URL}/orders/status?startDate=${start.toISOString()}&endDate=${end.toISOString()}`;
+        const res = await fetch(url, { headers });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const formatted = data.map((item) => {
+              const key = item.name ? item.name.toUpperCase() : "";
+              return {
+                ...item,
+                name: STATUS_TRANSLATIONS[key] || item.name,
+                color: STATUS_COLORS[key] || "#d1d5db",
+              };
+            });
+            setOrderStatusData(formatted);
+          } else {
+            setOrderStatusData([
+              { name: "Không có dữ liệu", value: 0, color: "#eee" },
+            ]);
+          }
+        }
+      } catch (error) {
+        console.error("Fetch Status Error:", error);
+        setOrderStatusData([{ name: "Lỗi tải", value: 0, color: "#ff4d4f" }]);
+      } finally {
+        setStatusLoading(false);
+      }
+    },
+    [token]
+  );
+
+  // --- 2. API CALL CHUNG (Chạy 1 lần đầu tiên) ---
   useEffect(() => {
     if (!token) return;
-    setLoading(true);
 
-    const fetchData = async () => {
+    const fetchAllData = async () => {
+      setLoading(true);
       try {
-        const headers = { Authorization: `Bearer ${token}` };
         const headersJson = { ...headers, "Content-Type": "application/json" };
-        const BASE_URL = "http://localhost:8080/api/admin/dashboard";
 
         const [
           resCat,
           resProd,
           resKPI,
-          resStatus,
           resComp,
           resCust,
           resPeak,
           resStock,
+          resStagnant,
         ] = await Promise.all([
           fetch(`${BASE_URL}/categories/top`, { headers }).catch(() => null),
           fetch(`${BASE_URL}/products/top`, { headers }).catch(() => null),
           fetch(`${BASE_URL}/overview`, { headers: headersJson }).catch(
             () => null
           ),
-          fetch(`${BASE_URL}/orders/status`, { headers }).catch(() => null),
           fetch(`${BASE_URL}/chart/revenue-comparison`, { headers }).catch(
             () => null
           ),
           fetch(`${BASE_URL}/customers/top`, { headers }).catch(() => null),
-          // API mới
           fetch(`${BASE_URL}/orders/peak-hours`, { headers }).catch(() => null),
           fetch(`${BASE_URL}/products/low-stock`, { headers }).catch(
             () => null
           ),
+          fetch(`${BASE_URL}/products/stagnant`, { headers }).catch(() => null),
         ]);
 
         // Xử lý Top Categories
@@ -143,6 +195,11 @@ export default function AdminDashboard() {
           );
         }
 
+        // Xử lý Hàng ế (Stagnant Products)
+        if (resStagnant && resStagnant.ok) {
+          setStagnantData(await resStagnant.json());
+        }
+
         // Xử lý Top Products
         if (resProd && resProd.ok) {
           const data = await resProd.json();
@@ -151,40 +208,17 @@ export default function AdminDashboard() {
 
         // Xử lý KPI
         if (resKPI && resKPI.ok) {
-          const data = await resKPI.json();
-          setKpiData(data);
-        }
-
-        // Xử lý Order Status (Pie Chart)
-        if (resStatus && resStatus.ok) {
-          const data = await resStatus.json();
-          if (Array.isArray(data) && data.length > 0) {
-            const formatted = data.map((item) => {
-              const key = item.name ? item.name.toUpperCase() : "";
-              return {
-                ...item,
-                name: STATUS_TRANSLATIONS[key] || item.name,
-                color: STATUS_COLORS[key] || "#000000",
-              };
-            });
-            setOrderStatusData(formatted);
-          } else {
-            setOrderStatusData([
-              { name: "Chưa có đơn", value: 1, color: "#eee" },
-            ]);
-          }
+          setKpiData(await resKPI.json());
         }
 
         // Xử lý Comparison Chart
         if (resComp && resComp.ok) {
           const data = await resComp.json();
-          if (Array.isArray(data) && data.length > 0) {
-            setComparisonData(data);
-          } else {
-            setComparisonData([
-              { label: "Không có dữ liệu", actual: 0, estimated: 0 },
-            ]);
-          }
+          setComparisonData(
+            Array.isArray(data) && data.length > 0
+              ? data
+              : [{ label: "Không có dữ liệu", actual: 0 }]
+          );
         }
 
         // Xử lý Top Customers
@@ -193,24 +227,48 @@ export default function AdminDashboard() {
           setTopCustomers(data.map((item, idx) => ({ key: idx, ...item })));
         }
 
-        // Xử lý Peak Hours (Mới)
+        // Xử lý Peak Hours
         if (resPeak && resPeak.ok) {
           setPeakHourData(await resPeak.json());
         }
 
-        // Xử lý Low Stock (Mới)
+        // Xử lý Low Stock
         if (resStock && resStock.ok) {
           setLowStockData(await resStock.json());
         }
+
+        // Gọi Status lần đầu theo dateRange mặc định
+        await fetchOrderStatus(dateRange[0], dateRange[1]);
       } catch (error) {
-        console.error("Dashboard Error:", error);
+        console.error("Dashboard Load Error:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchAllData();
   }, [token]);
+
+  // --- HANDLERS (XỬ LÝ SỰ KIỆN) ---
+
+  // 1. Khi chọn ngày trên lịch (RangePicker)
+  const handleRangeChange = (dates) => {
+    if (dates) {
+      setDateRange(dates);
+      fetchOrderStatus(dates[0].startOf("day"), dates[1].endOf("day"));
+    }
+  };
+
+  // 2. Khi bấm nút chọn nhanh (Segmented)
+  const handleQuickFilter = (key) => {
+    let start,
+      end = dayjs();
+    if (key === "today") start = dayjs().startOf("day");
+    else if (key === "month") start = dayjs().startOf("month");
+
+    setDateRange([start, end]);
+    fetchOrderStatus(start, end);
+  };
 
   // --- COLUMNS CONFIG ---
   const productColumns = [
@@ -277,6 +335,36 @@ export default function AdminDashboard() {
     },
   ];
 
+  const stagnantColumns = [
+    {
+      title: "Sản phẩm",
+      dataIndex: "name",
+      key: "name",
+      render: (text, record) => (
+        <div className="flex items-center gap-3">
+          <Avatar shape="square" src={record.image} size={40} />
+          <div>
+            <div className="font-medium text-gray-800 line-clamp-1">{text}</div>
+            <div className="text-xs text-rose-500">
+              Không bán được &gt; 3 tháng
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Tồn kho",
+      dataIndex: "stock",
+      key: "stock",
+      align: "right",
+      render: (val) => (
+        <Tag color="error" className="font-bold">
+          {val}
+        </Tag>
+      ),
+    },
+  ];
+
   const customerColumns = [
     {
       title: "Khách hàng VIP",
@@ -325,6 +413,7 @@ export default function AdminDashboard() {
     },
   ];
 
+  // --- COMPONENT HELPERS ---
   const StatCard = ({
     title,
     value,
@@ -385,11 +474,11 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="space-y-8 pb-10 bg-gray-50/30 p-2">
+    <div className="space-y-8 pb-10 bg-gray-50/30 p-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <Title level={2} style={{ marginBottom: 0, color: "#111827" }}>
-            Tổng quan
+            Tổng quan hệ thống
           </Title>
           <Text type="secondary">Xin chào, {user?.fullName || "Admin"}!</Text>
         </div>
@@ -450,14 +539,14 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-2">
                 <BarChartOutlined className="text-indigo-600" />
                 <span className="font-bold text-lg text-gray-800">
-                  Hiệu quả kinh doanh
+                  Doanh thu (Thực tế)
                 </span>
               </div>
             }
             bordered={false}
             className="shadow-sm rounded-2xl h-full border border-gray-100"
           >
-            <div style={{ width: "100%", height: 320, minHeight: 300 }}>
+            <div style={{ width: "100%", height: 350, minHeight: 300 }}>
               {loading ? (
                 <div className="w-full h-full flex items-center justify-center">
                   <Spin />
@@ -469,18 +558,6 @@ export default function AdminDashboard() {
                     margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                   >
                     <defs>
-                      <linearGradient id="colorEst" x1="0" y1="0" x2="0" y2="1">
-                        <stop
-                          offset="5%"
-                          stopColor="#3b82f6"
-                          stopOpacity={0.1}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="#3b82f6"
-                          stopOpacity={0}
-                        />
-                      </linearGradient>
                       <linearGradient id="colorAct" x1="0" y1="0" x2="0" y2="1">
                         <stop
                           offset="5%"
@@ -518,21 +595,10 @@ export default function AdminDashboard() {
                         border: "none",
                         boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
                       }}
-                      formatter={(value, name) => [
+                      formatter={(value) => [
                         new Intl.NumberFormat("vi-VN").format(value),
-                        name === "Thực tế" ? "Thực tế" : "Ước tính",
+                        "Doanh thu",
                       ]}
-                    />
-                    <Legend verticalAlign="top" height={36} iconType="circle" />
-                    <Area
-                      type="monotone"
-                      dataKey="estimated"
-                      name="Ước tính"
-                      stroke="#bd7332ff"
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
-                      fillOpacity={1}
-                      fill="url(#colorEst)"
                     />
                     <Area
                       type="monotone"
@@ -550,15 +616,47 @@ export default function AdminDashboard() {
           </Card>
         </Col>
 
+        {/* --- TỶ LỆ ĐƠN HÀNG VỚI BỘ LỌC ĐẸP --- */}
         <Col xs={24} lg={8}>
           <Card
             title={
-              <span className="font-bold text-lg text-gray-800">
-                Tỷ lệ đơn hàng
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="bg-indigo-50 text-indigo-600 p-1.5 rounded-md flex items-center justify-center">
+                  <PieChartOutlined />
+                </span>
+                <span className="font-bold text-lg text-gray-800">
+                  Tỷ lệ đơn hàng
+                </span>
+              </div>
             }
             bordered={false}
-            className="shadow-sm rounded-2xl h-full border border-gray-100"
+            className="shadow-sm rounded-2xl h-full border border-gray-100 flex flex-col"
+            bodyStyle={{ flex: 1 }}
+            // --- THANH CÔNG CỤ LỌC (EXTRA) ---
+            extra={
+              <div className="flex items-center p-1 bg-gray-50 border border-gray-200 rounded-lg">
+                <Segmented
+                  options={[
+                    { label: "Hôm nay", value: "today" },
+                    { label: "Tháng này", value: "month" },
+                  ]}
+                  onChange={handleQuickFilter}
+                  size="small"
+                  className="font-medium text-gray-600 bg-white shadow-sm"
+                />
+                <div className="w-[1px] h-4 bg-gray-300 mx-2"></div>
+                <RangePicker
+                  size="small"
+                  value={dateRange}
+                  onChange={handleRangeChange}
+                  format="DD/MM"
+                  allowClear={false}
+                  bordered={false}
+                  className="bg-transparent w-[140px] !shadow-none hover:bg-gray-100 transition-colors rounded"
+                  suffixIcon={<CalendarOutlined className="text-gray-400" />}
+                />
+              </div>
+            }
           >
             <div
               style={{
@@ -568,9 +666,12 @@ export default function AdminDashboard() {
                 position: "relative",
               }}
             >
-              {loading ? (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Spin />
+              {statusLoading ? (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                  <Spin size="large" />
+                  <span className="text-gray-400 text-sm">
+                    Đang tính toán số liệu...
+                  </span>
                 </div>
               ) : (
                 <>
@@ -582,39 +683,45 @@ export default function AdminDashboard() {
                         cy="50%"
                         innerRadius={70}
                         outerRadius={90}
-                        paddingAngle={3}
+                        paddingAngle={5}
+                        cornerRadius={4}
                         dataKey="value"
+                        stroke="none"
                       >
                         {orderStatusData.map((entry, index) => (
                           <Cell
                             key={`cell-${index}`}
                             fill={entry.color}
-                            strokeWidth={0}
+                            className="hover:opacity-80 cursor-pointer transition-opacity"
                           />
                         ))}
                       </Pie>
                       <Tooltip
-                        formatter={(value) => `${value} đơn`}
-                        contentStyle={{ borderRadius: "8px" }}
+                        formatter={(value) => [`${value} đơn`, "Số lượng"]}
+                        contentStyle={{
+                          borderRadius: "12px",
+                          border: "none",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                        }}
                       />
                       <Legend
                         verticalAlign="bottom"
                         height={36}
                         iconType="circle"
+                        iconSize={8}
+                        wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
-                  <div
-                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-[60%] text-center"
-                    style={{ pointerEvents: "none" }}
-                  >
-                    <span className="block text-3xl font-extrabold text-gray-800">
+
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-[65%] text-center pointer-events-none">
+                    <span className="block text-3xl font-extrabold text-gray-800 leading-tight">
                       {orderStatusData.reduce(
                         (acc, cur) => acc + (cur.value || 0),
                         0
                       )}
                     </span>
-                    <span className="text-sm text-gray-400 font-medium">
+                    <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">
                       Tổng đơn
                     </span>
                   </div>
@@ -627,7 +734,6 @@ export default function AdminDashboard() {
 
       {/* ROW 2: NEW CHARTS (PEAK HOUR & LOW STOCK) */}
       <Row gutter={[24, 24]}>
-        {/* Khung giờ mua hàng */}
         <Col xs={24} lg={12}>
           <Card
             title={
@@ -684,7 +790,6 @@ export default function AdminDashboard() {
           </Card>
         </Col>
 
-        {/* Cảnh báo tồn kho */}
         <Col xs={24} lg={12}>
           <Card
             title={
@@ -698,7 +803,6 @@ export default function AdminDashboard() {
             bordered={false}
             className="shadow-sm rounded-2xl border border-gray-100 h-full"
           >
-            {/* Tăng chiều cao lên 400px để thoáng hơn */}
             <div style={{ width: "100%", height: 400 }}>
               <ResponsiveContainer>
                 <BarChart
@@ -712,7 +816,6 @@ export default function AdminDashboard() {
                     stroke="#f3f4f6"
                   />
                   <XAxis type="number" hide />
-                  {/* Tăng width lên 180 để hiển thị trọn vẹn tên sản phẩm */}
                   <YAxis
                     dataKey="name"
                     type="category"
@@ -732,7 +835,6 @@ export default function AdminDashboard() {
                     barSize={20}
                     radius={[0, 4, 4, 0]}
                   >
-                    {/* Hiển thị số lượng ngay bên cạnh cột */}
                     <LabelList
                       dataKey="stock"
                       position="right"
@@ -780,7 +882,7 @@ export default function AdminDashboard() {
           <Card
             title={
               <span className="font-bold text-lg text-gray-800">
-                Top Danh mục
+                Top Danh mục bán chạy
               </span>
             }
             bordered={false}
@@ -793,36 +895,34 @@ export default function AdminDashboard() {
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
+                  {/* Thay đổi layout thành vertical để nằm ngang */}
                   <BarChart
+                    layout="vertical"
                     data={topCategories}
-                    margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
+                    margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      vertical={false}
+                      horizontal={false}
                       stroke="#f3f4f6"
                     />
 
-                    {/* Trục X hiển thị Tên danh mục */}
-                    <XAxis
-                      dataKey="name"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 13, fontWeight: 500, fill: "#4b5563" }}
-                      interval={0}
-                      dy={10}
-                    />
+                    {/* Trục X bây giờ là số lượng (type=number) */}
+                    <XAxis type="number" hide />
 
-                    {/* Trục Y hiển thị Giá trị (có thể ẩn nếu muốn gọn) */}
+                    {/* Trục Y hiển thị tên danh mục (type=category) */}
                     <YAxis
+                      dataKey="name"
+                      type="category"
+                      width={120} // Tăng width để hiển thị đủ tên danh mục
+                      tick={{
+                        fontSize: 13,
+                        fontWeight: 500,
+                        fill: "#4b5563",
+                      }}
+                      interval={0}
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      tickFormatter={(value) =>
-                        new Intl.NumberFormat("vi-VN", {
-                          notation: "compact",
-                        }).format(value)
-                      }
                     />
 
                     <Tooltip
@@ -832,15 +932,20 @@ export default function AdminDashboard() {
                         border: "none",
                         boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                       }}
-                      formatter={(value) => [`${value} đơn`, 'Đã bán']}
+                      formatter={(value) => [`${value} đơn`, "Đã bán"]}
                     />
 
                     <Bar
                       dataKey="sales"
                       fill="#8884d8"
-                      barSize={40}
-                      radius={[6, 6, 0, 0]}
+                      barSize={24}
+                      radius={[0, 4, 4, 0]} // Bo tròn bên phải
                     >
+                      <LabelList
+                        dataKey="sales"
+                        position="right"
+                        style={{ fill: "#6366f1", fontWeight: "bold" }}
+                      />
                       {topCategories.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
@@ -877,6 +982,32 @@ export default function AdminDashboard() {
               pagination={false}
               rowClassName="hover:bg-gray-50 transition-colors"
               loading={loading}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[24, 24]} className="mt-6">
+        <Col span={24}>
+          <Card
+            title={
+              <div className="flex items-center gap-2">
+                <WarningOutlined className="text-rose-600" />
+                <span className="font-bold text-lg text-gray-800">
+                  Top 10 sản phẩm "ế" (Tồn kho 3 tháng không bán được)
+                </span>
+              </div>
+            }
+            bordered={false}
+            className="shadow-sm rounded-2xl border border-gray-100"
+          >
+            <Table
+              columns={stagnantColumns}
+              dataSource={stagnantData}
+              pagination={false}
+              rowKey="name" // Hoặc id nếu có
+              loading={loading}
+              rowClassName="hover:bg-rose-50 transition-colors"
             />
           </Card>
         </Col>
