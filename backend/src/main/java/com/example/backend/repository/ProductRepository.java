@@ -34,6 +34,6 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 			"ORDER BY p.quantity DESC")
 	List<Object[]> findStagnantProducts(@Param("startDate") LocalDateTime startDate, Pageable pageable);
 
-	@Query(value = "SELECT * FROM products WHERE quantity > 0 LIMIT 20", nativeQuery = true)
+	@Query(value = "SELECT * FROM products WHERE quantity > 0", nativeQuery = true)
 	List<Product> findProductsForChatbot();
 }

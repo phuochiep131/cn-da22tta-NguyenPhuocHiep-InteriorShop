@@ -48,7 +48,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/coupons/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/flash-sales/**").permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/api/slideshows/public").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/chatbot/**").permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyRole("USER", "ADMIN")
@@ -83,6 +83,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/payments/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/payments/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/payments/*/status").hasRole("ADMIN")
+
+                        .requestMatchers("/api/slideshows/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/slideshows/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/slideshows/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/slideshows/**").hasRole("ADMIN")
 
                         .requestMatchers("/api/users/profile").authenticated()
                         .anyRequest().authenticated()
