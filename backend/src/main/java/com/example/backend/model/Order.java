@@ -31,7 +31,7 @@ public class Order {
     @Column(name = "customer_note", columnDefinition = "TEXT")
     private String customerNote;
 
-    @Column(name = "order_status", columnDefinition = "ENUM('Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled')")
+    @Column(name = "order_status", columnDefinition = "ENUM('Pending', 'Processing', 'Shipping', 'Delivered', 'Cancelled')")
     private String orderStatus;
 
     @Column(name = "order_date", columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")

@@ -13,6 +13,7 @@ import CouponManager from "./pages/admin/CouponManager";
 import OrderManager from "./pages/admin/OrderManager";
 import StatsPage from "./pages/admin/StatsPage";
 import FlashSaleManager from "./pages/admin/FlashSaleManager";
+import SlideshowManager from "./pages/admin/SlideshowManager";
 
 import Home from "./pages/user/Home";
 import Login from "./pages/user/Login";
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="coupons" element={<CouponManager />} />
             <Route path="orders" element={<OrderManager />} />
             <Route path="stats" element={<StatsPage />} />
+            <Route path="slide-shows" element={<SlideshowManager />} />
           </Route>
         </Route>
       </Routes>

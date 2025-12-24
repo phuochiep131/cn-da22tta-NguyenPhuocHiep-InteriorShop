@@ -59,6 +59,7 @@ export default function AdminLayout() {
     { key: "payment-methods", icon: <CreditCardOutlined />, label: "Thanh toán" },
     { key: "coupons", icon: <DollarOutlined />, label: "Mã giảm giá" },
     { key: "stats", icon: <BarChartOutlined />, label: "Báo cáo doanh thu" },
+    { key: "slide-shows", icon: <BarChartOutlined />, label: "Slide shows" },
     { type: "divider" },
     { key: "logout", icon: <LogoutOutlined />, label: "Đăng xuất", danger: true },
   ];
