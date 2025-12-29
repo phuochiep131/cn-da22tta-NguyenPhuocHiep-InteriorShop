@@ -6,7 +6,6 @@ import {
   Space,
   Modal,
   message,
-  Popconfirm,
   Select,
   Card,
   Typography,
@@ -17,7 +16,6 @@ import {
   SearchOutlined,
   ReloadOutlined,
   EyeOutlined,
-  DeleteOutlined,
   ShoppingCartOutlined,
   CreditCardOutlined,
   ClockCircleOutlined,
@@ -38,10 +36,9 @@ export default function OrderManager() {
   const [orders, setOrders] = useState([]);
   const [searchText, setSearchText] = useState("");
 
-  // [UPDATED] Thêm state cho bộ lọc phương thức thanh toán
   const [statusFilter, setStatusFilter] = useState(null);
   const [paymentFilter, setPaymentFilter] = useState(null);
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState(null); // Mới
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [detailOrder, setDetailOrder] = useState(null);
@@ -67,13 +64,11 @@ export default function OrderManager() {
     { value: "Refunded", label: "Đã hoàn tiền", color: "magenta" },
   ];
 
-  // [NEW] Danh sách phương thức thanh toán để lọc
   const paymentMethodOptions = [
     { value: "PM001", label: "COD" },
     { value: "PM002", label: "VNPay" },
   ];
 
-  // Config hiển thị
   const getOrderStatusConfig = (status) => {
     switch ((status || "").toLowerCase()) {
       case "pending":
@@ -262,20 +257,6 @@ export default function OrderManager() {
     }
   };
 
-  const deleteOrder = async (orderId) => {
-    try {
-      const res = await fetch(`http://localhost:8080/api/orders/${orderId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error();
-      messageApi.success("Xóa đơn hàng thành công");
-      fetchOrders();
-    } catch {
-      messageApi.error("Không thể xóa đơn hàng");
-    }
-  };
-
   const columns = [
     {
       title: "Đơn hàng",
@@ -307,12 +288,10 @@ export default function OrderManager() {
     },
     {
       title: "Phương thức",
-      // Sửa từ "paymentMethodId" thành ["payment", "paymentMethodId"]
       dataIndex: ["payment", "paymentMethodId"],
       width: 130,
       align: "center",
       render: (val) => {
-        // Bây giờ val sẽ nhận được giá trị như "PM001" hoặc "PM002"
         const method = val ? val.toUpperCase() : "UNKNOWN";
         let color = "default";
         let icon = null;
@@ -450,7 +429,7 @@ export default function OrderManager() {
     {
       title: "",
       fixed: "right",
-      width: 100,
+      width: 60,
       render: (_, record) => (
         <Space>
           <Button
@@ -462,36 +441,25 @@ export default function OrderManager() {
               setIsDetailOpen(true);
             }}
           />
-          <Popconfirm
-            title="Xóa đơn này?"
-            onConfirm={() => deleteOrder(record.orderId)}
-          >
-            <Button type="text" danger size="small" icon={<DeleteOutlined />} />
-          </Popconfirm>
         </Space>
       ),
     },
   ];
 
-  // [UPDATED] Logic Lọc dữ liệu: Search + Status Filter + Payment Filter + Method Filter
   const filteredOrders = orders.filter((o) => {
-    // 1. Lọc theo từ khóa
     const matchSearch =
       o.orderId.toLowerCase().includes(searchText) ||
       o.userId.toLowerCase().includes(searchText);
 
-    // 2. Lọc theo Trạng thái đơn
     const matchStatus = statusFilter
       ? (o.orderStatus || "").toLowerCase() === statusFilter.toLowerCase()
       : true;
 
-    // 3. Lọc theo Trạng thái thanh toán
     const currentPaymentStatus = o.payment?.paymentStatus || "pending";
     const matchPayment = paymentFilter
       ? currentPaymentStatus.toLowerCase() === paymentFilter.toLowerCase()
       : true;
 
-    // 4. [NEW] Lọc theo Phương thức thanh toán
     const matchMethod = paymentMethodFilter
       ? (o.payment.paymentMethodId || "")
           .toLowerCase()
@@ -505,7 +473,6 @@ export default function OrderManager() {
     <div className="p-4 md:p-6 bg-slate-50 min-h-screen">
       {contextHolder}
       <Card bordered={false} className="shadow-sm">
-        {/* Header Control */}
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6">
           <div>
             <Title level={4} style={{ margin: 0 }}>
@@ -517,7 +484,6 @@ export default function OrderManager() {
           </div>
 
           <div className="flex flex-wrap gap-3 w-full xl:w-auto">
-            {/* Bộ lọc Trạng thái đơn */}
             <Select
               placeholder="Trạng thái đơn"
               style={{ width: 150 }}
@@ -532,7 +498,6 @@ export default function OrderManager() {
               ))}
             </Select>
 
-            {/* Bộ lọc Trạng thái thanh toán */}
             <Select
               placeholder="TT Thanh toán"
               style={{ width: 150 }}
@@ -547,7 +512,6 @@ export default function OrderManager() {
               ))}
             </Select>
 
-            {/* [NEW] Bộ lọc Phương thức thanh toán */}
             <Select
               placeholder="Loại TT"
               style={{ width: 150 }}
@@ -582,7 +546,6 @@ export default function OrderManager() {
         />
       </Card>
 
-      {/* Modal Chi tiết */}
       <Modal
         title={<span className="text-lg font-semibold">Chi tiết đơn hàng</span>}
         open={isDetailOpen}
