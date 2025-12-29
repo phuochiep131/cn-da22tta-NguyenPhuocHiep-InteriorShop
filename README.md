@@ -1,12 +1,4 @@
 # Xây dựng website bán nội thất tích hợp AI chatbot tư vấn khách hàng
-## Tác giả: Nguyễn Phước Hiệp - 110122005 - DA22TTA
-## Email: nphhiep1301@gmail.com
-
-## 🛠️ Cấu hình & Cài đặt (Configuration & Installation)
-
-## 2. Cấu hình Backend# 🛋️ Xây dựng website bán nội thất tích hợp AI chatbot tư vấn khách hàng
-
-> Đồ án chuyên ngành: Xây dựng hệ thống thương mại điện tử nội thất với sự hỗ trợ của AI Chatbot.
 
 ## 👨‍💻 Thông tin tác giả
 - **Họ và tên:** Nguyễn Phước Hiệp
