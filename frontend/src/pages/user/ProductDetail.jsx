@@ -263,11 +263,9 @@ export default function ProductDetail() {
         return;
       }
     } else if (selectedProduct.quantity <= 0) {
-      messageApi.error("Sản phẩm đã hết hàng!");
-      return;
-    } else if (qty > selectedProduct.quantity) {
-      messageApi.warning(`Kho chỉ còn ${selectedProduct.quantity} sản phẩm!`);
-      return;
+      messageApi.info(
+        "Sản phẩm đang hết hàng. Bạn đang đặt trước sản phẩm này."
+      );
     }
 
     const orderPayload = {
@@ -727,9 +725,7 @@ export default function ProductDetail() {
               <div className="flex items-center gap-6 mb-8">
                 <span className="font-semibold text-gray-700">Số lượng:</span>
                 <div
-                  className={`flex items-center border border-gray-300 rounded-lg overflow-hidden h-10 ${
-                    isOutOfStock ? "opacity-50 pointer-events-none" : ""
-                  }`}
+                  className={`flex items-center border border-gray-300 rounded-lg overflow-hidden h-10`}
                 >
                   <button
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -743,11 +739,13 @@ export default function ProductDetail() {
                   <button
                     onClick={() =>
                       setQuantity((q) => {
-                        // Kiểm tra giới hạn: Flash Sale hoặc tồn kho thường
-                        const limit = isFlashSale
-                          ? maxAvailable
-                          : product.quantity;
-                        return q + 1 > limit ? q : q + 1;
+                        if (isFlashSale) {
+                          return q + 1 > maxAvailable ? q : q + 1;
+                        }
+                        if (isOutOfStock) {
+                          return q + 1;
+                        }
+                        return q + 1 > product.quantity ? q : q + 1;
                       })
                     }
                     className="w-10 h-full bg-gray-50 hover:bg-gray-100 text-gray-600 transition flex items-center justify-center font-bold"
@@ -761,19 +759,17 @@ export default function ProductDetail() {
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-auto">
                 <button
                   onClick={() => handleAddToCart(product, quantity)}
-                  disabled={isOutOfStock}
+                  disabled={false}
                   className={`flex-1 py-3.5 px-6 border-2 font-bold rounded-lg transition-colors flex items-center justify-center gap-2
-                     ${
-                       isOutOfStock
-                         ? "border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50"
-                         : isFlashSale
-                         ? "border-orange-500 text-orange-600 hover:bg-orange-50"
-                         : "border-blue-600 text-blue-600 hover:bg-blue-50"
-                     }
+                    ${
+                      isFlashSale
+                        ? "border-orange-500 text-orange-600 hover:bg-orange-50"
+                        : "border-blue-600 text-blue-600 hover:bg-blue-50"
+                    }
                   `}
                 >
                   <ShoppingCartOutlined className="text-xl" />
-                  THÊM VÀO GIỎ
+                  {isOutOfStock ? "ĐẶT TRƯỚC" : "THÊM VÀO GIỎ"}
                 </button>
 
                 <button

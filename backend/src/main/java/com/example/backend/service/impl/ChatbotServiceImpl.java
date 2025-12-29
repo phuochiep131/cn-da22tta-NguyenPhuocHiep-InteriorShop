@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,7 +48,7 @@ public class ChatbotServiceImpl implements ChatbotService {
     @Override
     public ChatResponse getChatbotResponse(ChatRequest request) {
         try {
-            // 1. Lấy dữ liệu
+            // 1. Lấy dữ liệu kho hàng (Context)
             String productContext = getProductContextFromDB();
 
             // 2. Headers
@@ -55,49 +56,78 @@ public class ChatbotServiceImpl implements ChatbotService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + apiKey);
 
-            // 3. Body
+            // 3. Chuẩn bị Body
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", model);
-            List<Map<String, String>> messages = new ArrayList<>();
+            List<Map<String, Object>> messages = new ArrayList<>();
 
-            // --- SYSTEM PROMPT ---
-            String promptContent = "Bạn là nhân viên tư vấn của NPH Store, một website bán đồ nội thất. " +
-                    "Dưới đây là danh sách sản phẩm:\n" +
-                    "--- KHO HÀNG ---\n" +
-                    productContext +
-                    "\n----------------\n" +
-                    "QUY TẮC TRẢ LỜI QUAN TRỌNG:\n" +
-                    "1. Format sản phẩm: [Tên sản phẩm](URL_Chi_Tiết) ![Giá_Gốc|Giá_Giảm](URL_Anh)\n" +
-                    "2. Giữa các sản phẩm phải CÁCH NHAU 1 DÒNG TRỐNG.\n" +
-                    "3. QUY TẮC KẾT HỢP KHO HÀNG (BẮT BUỘC):\n" +
-                    "   - Khi khách hỏi tư vấn (ví dụ: 'nên mua A hay B?'), bạn hãy đưa ra lời khuyên ngắn gọn.\n" +
-                    "   - NGAY SAU ĐÓ, bạn phải đối chiếu với [KHO HÀNG] ở trên:\n" +
-                    "     + Nếu CÓ sản phẩm phù hợp: Hãy giới thiệu ngay (kèm link và ảnh).\n" +
-                    "     + Nếu KHÔNG CÓ sản phẩm phù hợp trong kho: Bạn phải trả lời thật thà là 'Hiện tại shop chưa kinh doanh mặt hàng này' hoặc 'Hiện shop chưa có mẫu này'.\n" +
-                    "   - TUYỆT ĐỐI KHÔNG đưa ra lời khuyên chung chung mà không thông báo tình trạng hàng hóa.\n" +
-                    "4. Giọng điệu tự nhiên, không cần đánh số 1. 2. 3. nếu không cần thiết."+
-                    "5. Với mỗi sản phẩm, trả về đúng định dạng sau:\n" +
-                    "   [Tên sản phẩm](Link_Chi_Tiết) ![Giá_Gốc|Giá_Giảm](Link_Ảnh)\n" +
-                    "   (Lưu ý: Trong dấu [] của ảnh, hãy điền Giá Gốc và Giá Giảm ngăn cách bởi dấu gạch đứng | )\n" +
-                    "   Ví dụ: [Sofa Da](...) ![10.000.000đ|7.500.000đ](...)\n" +
-                    "6. PHẠM VI KIẾN THỨC (CẦN PHÂN BIỆT RÕ):\n" +
-                    "   - ĐƯỢC PHÉP: Bạn là chuyên gia nội thất. Hãy tự tin trả lời các câu hỏi về: so sánh chất liệu (gỗ, da, nỉ), cách vệ sinh, phong thủy cơ bản, cách bài trí...\n" +
-                    "   - CẤM: Tuyệt đối KHÔNG trả lời các vấn đề: Viết code lập trình, giải toán học, chính trị, y tế, hoặc các vấn đề xã hội không liên quan nội thất.\n" +
-                    "   - Nếu khách hỏi vấn đề BỊ CẤM -> Từ chối khéo.\n" +
-                    "   - Nếu khách hỏi kiến thức nội thất -> Trả lời nhiệt tình + Gợi ý sản phẩm.\n" +
-                    "7. XỬ LÝ CÂU HỎI CHUNG CHUNG / CỘC LỐC:\n" +
-                    "   - Nếu khách nói ngắn gọn như 'Tư vấn đi', 'Alo', 'Cần giúp', 'Shop ơi'...\n" +
-                    "   - KHÔNG ĐƯỢC từ chối. Hãy mặc định là khách muốn mua nội thất.\n" +
-                    "   - HÃY CHỦ ĐỘNG hỏi ngược lại để khơi gợi nhu cầu.\n" +
-                    "   - Ví dụ: 'Dạ chào anh/chị, mình đang muốn decor cho phòng khách, phòng ngủ hay phòng bếp ạ? Để em tìm mẫu phù hợp nhé!'\n"+
-                    "8. QUY TẮC VỀ GIÁ & KHUYẾN MÃI (QUAN TRỌNG):\n" +
-                    "   - Nếu khách hỏi 'có mã giảm giá', 'có sale không', 'bớt giá không', 'khuyến mãi':\n" +
-                    "   - TUYỆT ĐỐI KHÔNG trả lời là 'không biết' hoặc 'không rành'. Điều này làm mất khách.\n" +
-                    "   - HÃY KIỂM TRA KHO HÀNG: \n" +
-                    "     + Nếu thấy sản phẩm có 2 mức giá (Giá Gốc | Giá Giảm): Hãy trả lời 'Dạ hiện bên em đang có giảm giá trực tiếp trên sản phẩm đấy ạ' và liệt kê ra.\n" +
-                    "     + Nếu không có giảm giá: Hãy trả lời khéo léo: 'Dạ hiện tại bên em đang bán giá niêm yết tốt nhất thị trường rồi ạ, nhưng em có thể tư vấn mẫu phù hợp túi tiền cho mình nhé!'.\n";
 
+            // === BƯỚC 1: SYSTEM PROMPT (LOGIC CHẶT CHẼ) ===
+            String promptContent =
+                    "=== 1. ĐỊNH DANH & PHẠM VI TƯ VẤN (QUAN TRỌNG) ===\n" +
+                            "- Bạn là: CHUYÊN VIÊN TƯ VẤN NỘI THẤT của NPH Store.\n" +
+                            "- PHẠM VI ĐƯỢC PHÉP TRẢ LỜI:\n" +
+                            "  + Tất cả sản phẩm nội thất cho: Phòng Khách, Phòng Ngủ, Phòng Bếp (Bàn ăn, Ghế ăn), Phòng Làm Việc.\n" +
+                            "  + Đồ trang trí, Decor, Đèn, Thảm...\n" +
+                            "  + Tư vấn chất liệu, kích thước, cách bài trí.\n\n" +
+
+                            "- CHỦ ĐỀ CẤM (CHỈ TỪ CHỐI KHI GẶP CÁC CHỦ ĐỀ SAU):\n" +
+                            "  + Viết Code, Lập trình (IT)\n" +
+                            "  + Giải Toán, Lý, Hóa, Bài tập về nhà\n" +
+                            "  + Chính trị, Tôn giáo, Y tế, Pháp luật\n" +
+                            "  + Các vấn đề đời sống cá nhân không liên quan mua sắm.\n\n" +
+
+                            "- CÂU TỪ CHỐI (Chỉ dùng cho chủ đề CẤM):\n" +
+                            "  \"Dạ em chỉ là nhân viên tư vấn nội thất nên không hỗ trợ được nội dung này ạ. Mình quay lại chọn bàn ghế, sofa hay đồ trang trí cho nhà mình nhé!\"\n\n" +
+
+                            "=== 2. DỮ LIỆU KHO HÀNG (CONTEXT) ===\n" +
+                            "--- KHO HÀNG BẮT ĐẦU ---\n" +
+                            productContext + "\n" +
+                            "--- KHO HÀNG KẾT THÚC ---\n\n" +
+
+                            "=== 3. QUY TRÌNH XỬ LÝ THÔNG MINH (LOGIC) ===\n" +
+                            "BƯỚC 1: SUY LUẬN TỪ KHÓA (KEYWORD MAPPING)\n" +
+                            "  - Khách hỏi 'Phòng Bếp' -> Tìm: 'Bàn ăn', 'Ghế ăn', 'Bộ bàn ghế', 'Tủ bếp'.\n" +
+                            "  - Khách hỏi 'Phòng Khách' -> Tìm: 'Sofa', 'Bàn trà', 'Kệ Tivi'.\n" +
+                            "  - Khách hỏi 'Phòng Ngủ' -> Tìm: 'Giường', 'Tủ quần áo', 'Tab đầu giường'.\n" +
+                            "  - Khách hỏi 'Đau lưng' -> Tìm: 'Sofa êm', 'Ghế thư giãn', 'Nệm'.\n\n" +
+
+                            "BƯỚC 2: KIỂM TRA & LỌC SẢN PHẨM\n" +
+                            "  - Duyệt kho hàng tìm sản phẩm khớp với từ khóa đã suy luận.\n" +
+                            "  - So sánh GIÁ: Chỉ lấy sản phẩm có [Giá Bán] <= [Ngân Sách Khách].\n" +
+                            "  - LOẠI BỎ NGAY các sản phẩm vượt ngân sách.\n" +
+                            "  - Nếu không tìm thấy sản phẩm nào trong kho (hoặc hết hàng): Phải trả lời thật thà 'Hiện shop chưa có mẫu cho phòng bếp' hoặc gợi ý sang món khác. KHÔNG ĐƯỢC dùng câu từ chối của phần chủ đề cấm.\n\n" +
+
+                            "BƯỚC 3: XỬ LÝ CẢM XÚC\n" +
+                            "  - Nếu khách phàn nàn -> Xin lỗi chân thành trước khi bán tiếp.\n\n" +
+
+                            "=== 4. QUY TẮC HIỂN THỊ (MARKDOWN ẢNH) ===\n" +
+                            "- Chỉ hiển thị danh sách kết quả đã lọc (Tối đa 3 món).\n" +
+                            "- Định dạng:\n" +
+                            "1. [Tên Sản Phẩm](Link) ![GiáGốc|GiáGiảm](LinkẢnh)\n" +
+                            "2. [Tên Sản Phẩm](Link) ![GiáGốc|GiáGiảm](LinkẢnh)\n\n" +
+                            "- Yêu cầu giá trong ![]: Chỉ điền SỐ NGUYÊN (VD: 5000000), không điền chữ.\n" +
+                            "- KHÔNG viết mô tả thừa bên dưới ảnh.\n\n" +
+
+                            "=== 5. VÍ DỤ MẪU (HÃY HỌC THEO) ===\n" +
+                            "User: 'Gợi ý nội thất phòng bếp'\n" +
+                            "Bot (Suy luận: Bếp -> Tìm Bàn ăn):\n" +
+                            "\"Dạ cho không gian phòng bếp ấm cúng, em xin gợi ý các mẫu Bộ Bàn Ăn đang bán chạy bên em ạ:\n" +
+                            "1. [Bộ Bàn Ăn Mango](Link) ![4000000|3500000](Ảnh)\n" +
+                            "2. [Bàn Ăn Gỗ Sồi](Link) ![5000000|5000000](Ảnh)\n" +
+                            "Anh/chị thấy mẫu nào hợp mắt không ạ?\"";
+
+            // Add System Prompt
             messages.add(Map.of("role", "system", "content", promptContent));
+
+            if (request.getHistory() != null && !request.getHistory().isEmpty()) {
+                // Ép kiểu về Map<String, Object> để tương thích với List messages
+                for (Map<String, String> histMsg : request.getHistory()) {
+                    messages.add(new HashMap<>(histMsg));
+                }
+            }
+
+            // === BƯỚC 3: CÂU HỎI MỚI CỦA USER (LUÔN CUỐI CÙNG) ===
             messages.add(Map.of("role", "user", "content", request.getMessage()));
 
             requestBody.put("messages", messages);
@@ -115,32 +145,64 @@ public class ChatbotServiceImpl implements ChatbotService {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return new ChatResponse("Hệ thống đang bảo trì.");
+            return new ChatResponse("Hệ thống đang bảo trì, vui lòng thử lại sau.");
         }
     }
 
     private String getProductContextFromDB() {
-        List<Product> products = productRepository.findProductsForChatbot();
+        List<Product> products = productRepository.findAll();
         if (products.isEmpty()) return "Kho đang cập nhật.";
+
+        // !!! QUAN TRỌNG: Thay đổi domain này thành domain thật của server chứa ảnh
+        String IMAGE_BASE_URL = "http://localhost:8080";
 
         return products.stream()
                 .map(p -> {
                     String productLink = FRONTEND_URL + "/product/" + p.getProductId();
 
-                    String imgUrl = (p.getImageUrl() != null) ? p.getImageUrl() : "";
-                    BigDecimal currentPrice = p.getPrice();
-                    BigDecimal originalPrice = currentPrice.multiply(new BigDecimal("1.2"));
+                    // Xử lý ảnh (Tạo link tuyệt đối)
+                    String rawImg = p.getImageUrl();
+                    String finalImgUrl;
+                    if (rawImg == null || rawImg.isEmpty()) {
+                        finalImgUrl = "https://via.placeholder.com/300x200.png?text=No+Image";
+                    } else if (rawImg.startsWith("http")) {
+                        finalImgUrl = rawImg;
+                    } else {
+                        // Đảm bảo không bị trùng dấu gạch chéo
+                        String path = rawImg.startsWith("/") ? rawImg : "/" + rawImg;
+                        finalImgUrl = IMAGE_BASE_URL + path;
+                    }
+
+                    // Xử lý Giá & Giảm giá
+                    BigDecimal currentPrice = p.getPrice(); // Giá bán hiện tại
+                    BigDecimal originalPrice = currentPrice;
+                    BigDecimal discountVal = p.getDiscount(); // Ví dụ: 15.00
+
+                    // Tính giá gốc nếu có discount
+                    if (discountVal != null && discountVal.compareTo(BigDecimal.ZERO) > 0) {
+                        BigDecimal factor = BigDecimal.valueOf(100).subtract(discountVal);
+                        if (factor.compareTo(BigDecimal.ZERO) > 0) {
+                            originalPrice = currentPrice.multiply(BigDecimal.valueOf(100))
+                                    .divide(factor, 0, RoundingMode.HALF_UP);
+                        }
+                    }
 
                     String priceTxt = String.format("%.0f", currentPrice);
                     String originalPriceTxt = String.format("%.0f", originalPrice);
 
-                    return String.format("- Tên: %s | Giá: %s | Link: %s | Ảnh: %s | Màu: %s",
+                    int quantity = p.getQuantity();
+                    String status = (quantity > 0) ? "CÒN HÀNG" : "HẾT HÀNG";
+
+                    // Data gửi cho AI
+                    return String.format("- Tên: %s | Trạng thái: %s | Giá Gốc: %s | Giá Giảm: %s | Link: %s | Ảnh: %s | Mô tả: %s",
                             p.getProductName(),
-                            originalPriceTxt + " VNĐ",
-                            priceTxt + " VNĐ",
+                            status,
+                            originalPriceTxt,
+                            priceTxt,
                             productLink,
-                            imgUrl,
-                            p.getColor());
+                            finalImgUrl,
+                            p.getDescription()
+                    );
                 })
                 .collect(Collectors.joining("\n"));
     }

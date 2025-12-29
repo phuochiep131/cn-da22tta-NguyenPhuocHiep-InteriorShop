@@ -593,7 +593,7 @@ export default function Products() {
                     (c) => String(c.categoryId) === String(categoryId)
                   )?.categoryName || "Sản phẩm"
                 }`
-              : "Tất cả sản phẩm"}
+              : ""}
           </h1>
           <button
             onClick={() => setMobileFilterOpen(true)}

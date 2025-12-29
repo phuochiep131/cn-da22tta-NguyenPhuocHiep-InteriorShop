@@ -467,7 +467,7 @@ export default function AdminDashboard() {
             )}
             {Math.abs(growth)}%
           </span>
-          <span className="text-gray-400">so với tuần trước</span>
+          <span className="text-gray-400">so với tháng trước</span>
         </div>
       )}
     </Card>
